@@ -1,4 +1,4 @@
-# Cortada Roo Booking
+# Cortada Roo
 
 Plataforma web desarrollada para **Complejo Apartamentos Cortada Roo Santa Fé**, diseñada para simplificar el proceso de reservas de los huéspedes y brindar una herramienta completa para la gestión interna del alojamiento.
 
