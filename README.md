@@ -1,51 +1,76 @@
-# React + TypeScript + Vite
+# Cortada Roo Booking
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Plataforma web desarrollada para **Complejo Apartamentos Cortada Roo Santa Fé**, diseñada para simplificar el proceso de reservas de los huéspedes y brindar una herramienta completa para la gestión interna del alojamiento.
 
-Currently, two official plugins are available:
+El proyecto combina un sitio web responsive con un panel de administración privado, permitiendo centralizar la disponibilidad, las reservas, los apartamentos y la información de los huéspedes en una única plataforma.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 🚀 Características
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- 🏨 Sitio web moderno e intuitivo
+- 📅 Búsqueda de disponibilidad en tiempo real
+- 🛏️ Visualización de habitaciones
+- 📝 Solicitud de reservas online
+- 🔐 Panel de administración privado
+- 👥 Gestión de huéspedes
+- 📆 Calendario de reservas
+- 🏠 Administración de habitaciones
+- 🚫 Bloqueo de fechas y control de disponibilidad
+- 📊 Dashboard con estadísticas
+- 🔒 Rutas protegidas mediante autenticación
+- 📱 Diseño Mobile First totalmente responsive
 
-- Configure the top-level `parserOptions` property like this:
+---
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## 🎯 Sitio Público
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+- Inicio
+- Búsqueda de disponibilidad
+- Apartamentos
+- Detalle de alojamiento
+- Solicitud de reserva
+- Contacto
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+---
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
-# Cortada-Roo-PMS
+## 🔐 Panel de Administración
+
+- Dashboard
+- Gestión de reservas
+- Gestión de apartamentos
+- Gestión de huéspedes
+- Calendario de disponibilidad
+- Creación manual de reservas
+- Bloqueo de fechas
+- Confirmación y cancelación de reservas
+
+---
+
+## 📱 Responsive
+
+La plataforma se encuentra optimizada para:
+
+- Computadoras de escritorio
+- Notebooks
+- Tablets
+- Dispositivos móviles
+
+---
+
+## ⭐ Aspectos destacados
+
+- Arquitectura escalable
+- Desarrollo Mobile First
+- Gestión centralizada de reservas
+- Autenticación segura
+- Prevención de reservas superpuestas
+- Código modular y mantenible
+- Diseño moderno y responsive
+- Preparado para futuras integraciones con otras plataformas
+
+---
+
+## 📄 Licencia
+
+Este proyecto fue desarrollado exclusivamente para **Complejo Apartamentos Cortada Roo**.
