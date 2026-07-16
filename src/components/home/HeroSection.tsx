@@ -12,9 +12,7 @@ import { useNavigate } from "react-router-dom";
 import heroImage from "../../assets/img1.jpeg";
 import BookingDateRangePicker from "../ui/BookingDateRangePicker";
 
-const formatQueryDate = (date?: Date) => {
-  if (!date) return "";
-
+const formatQueryDate = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -27,11 +25,31 @@ const HeroSection = () => {
 
   const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(2);
+  const [searchError, setSearchError] = useState("");
 
   const hasCompleteRange = Boolean(selectedRange?.from && selectedRange?.to);
 
+  const handleRangeChange = (range: DateRange | undefined) => {
+    setSelectedRange(range);
+    setSearchError("");
+  };
+
   const handleSearch = () => {
-    if (!selectedRange?.from || !selectedRange?.to) return;
+    if (!selectedRange?.from || !selectedRange?.to) {
+      setSearchError(
+        "Seleccioná una fecha de check-in y una fecha de check-out.",
+      );
+
+      return;
+    }
+
+    if (selectedRange.to <= selectedRange.from) {
+      setSearchError("La fecha de check-out debe ser posterior al check-in.");
+
+      return;
+    }
+
+    setSearchError("");
 
     const searchParams = new URLSearchParams({
       from: formatQueryDate(selectedRange.from),
@@ -122,8 +140,8 @@ const HeroSection = () => {
 
                 sm:grid-cols-2
 
-                lg:grid-cols-[minmax(0,2fr)_minmax(210px,0.75fr)_minmax(210px,auto)]
-                lg:items-end
+                lg:grid-cols-[minmax(0,2fr)_minmax(240px,0.78fr)_minmax(220px,auto)]
+                lg:items-stretch
                 lg:gap-3
               "
             >
@@ -131,95 +149,109 @@ const HeroSection = () => {
               <div className="min-w-0">
                 <BookingDateRangePicker
                   selectedRange={selectedRange}
-                  onRangeChange={setSelectedRange}
+                  onRangeChange={handleRangeChange}
                 />
               </div>
 
               {/* Huéspedes */}
-              <label className="block min-w-0">
-                <span className="mb-2 block text-xs font-semibold text-neutral-700">
+              <label className="relative block min-w-0">
+                <select
+                  value={guests}
+                  onChange={(event) => {
+                    setGuests(Number(event.target.value));
+                    setSearchError("");
+                  }}
+                  className="
+                    h-[62px] w-full min-w-0
+                    appearance-none rounded-xl
+                    border border-[#d8c8b7]
+                    bg-[#f3ede6]/95
+                    pb-2 pl-10 pr-10 pt-6
+                    text-sm text-[#3f3730]
+                    outline-none transition
+
+                    hover:border-[#b99470]
+                    hover:bg-[#f8f3ed]
+
+                    focus:border-[#a9794b]
+                    focus:bg-[#f8f3ed]
+                    focus:ring-1
+                    focus:ring-[#a9794b]/40
+                  "
+                >
+                  <option value={1}>1 persona</option>
+                  <option value={2}>2 personas</option>
+                  <option value={3}>3 personas</option>
+                  <option value={4}>4 personas</option>
+                  <option value={5}>5 personas</option>
+                </select>
+
+                <span
+                  className="
+                    pointer-events-none absolute
+                    left-3 top-2.5
+                    text-xs font-semibold text-[#5f5145]
+                  "
+                >
                   Huéspedes
                 </span>
 
-                <div className="relative">
-                  <UserRound
-                    size={17}
-                    strokeWidth={1.7}
-                    className="
-                      pointer-events-none absolute
-                      left-3 top-1/2
-                      -translate-y-1/2
-                      text-neutral-500
-                    "
-                  />
+                <UserRound
+                  size={17}
+                  strokeWidth={1.7}
+                  className="
+                    pointer-events-none absolute
+                    bottom-[13px] left-3
+                    text-[#8b735d]
+                  "
+                />
 
-                  <select
-                    value={guests}
-                    onChange={(event) => setGuests(Number(event.target.value))}
-                    className="
-                      h-12 w-full min-w-0
-                      appearance-none rounded-xl
-                      border border-neutral-200/70
-                      bg-neutral-50/70
-                      pl-10 pr-10
-                      text-sm text-neutral-700
-                      outline-none transition
-
-                      hover:bg-white
-                      focus:border-[#a57b52]
-                      focus:bg-white
-                    "
-                  >
-                    <option value={1}>1 persona</option>
-                    <option value={2}>2 personas</option>
-                    <option value={3}>3 personas</option>
-                    <option value={4}>4 personas</option>
-                    <option value={5}>5 personas</option>
-                  </select>
-
-                  <ChevronDown
-                    size={17}
-                    strokeWidth={1.7}
-                    className="
-                      pointer-events-none absolute
-                      right-3 top-1/2
-                      -translate-y-1/2
-                      text-neutral-500
-                    "
-                  />
-                </div>
+                <ChevronDown
+                  size={17}
+                  strokeWidth={1.7}
+                  className="
+                    pointer-events-none absolute
+                    bottom-[13px] right-3
+                    text-[#8b735d]
+                  "
+                />
               </label>
 
               {/* Botón */}
               <button
                 type="button"
                 onClick={handleSearch}
-                disabled={!hasCompleteRange}
-                className="
-                  flex h-12 w-full items-center justify-center
-                  rounded-xl bg-[#9b6f45] px-6
-                  text-sm font-semibold text-white
+                className={`
+                  flex h-[62px] w-full items-center justify-center
+                  rounded-xl px-6
+                  text-sm font-semibold
                   shadow-sm transition
 
-                  hover:bg-[#845b39]
                   active:scale-[0.99]
-
-                  disabled:cursor-not-allowed
-                  disabled:bg-neutral-300/90
-                  disabled:text-neutral-500
-                  disabled:shadow-none
 
                   sm:col-span-2
 
                   lg:col-span-1
-                  lg:min-w-[210px]
-                "
+                  lg:min-w-[220px]
+
+                  ${
+                    hasCompleteRange
+                      ? "bg-[#9b6f45] text-white hover:bg-[#845b39]"
+                      : "bg-[#d8c8b7] text-[#625548] hover:bg-[#cdbba8]"
+                  }
+                `}
               >
                 {hasCompleteRange
                   ? "Buscar disponibilidad"
                   : "Elegí las fechas"}
               </button>
             </div>
+
+            {searchError && (
+              <p role="alert" className="mt-3 text-sm font-medium text-red-700">
+                {searchError}
+              </p>
+            )}
           </div>
         </div>
 
@@ -241,21 +273,21 @@ const HeroSection = () => {
 
             <h1
               className="
-    mt-3 max-w-[320px]
-    font-serif text-[38px] font-medium
-    leading-[1.02] tracking-[-0.025em]
-    text-white
+                mt-3 max-w-[320px]
+                font-serif text-[38px] font-medium
+                leading-[1.02] tracking-[-0.025em]
+                text-white
 
-    min-[380px]:max-w-[370px]
-    min-[380px]:text-[42px]
+                min-[380px]:max-w-[370px]
+                min-[380px]:text-[42px]
 
-    sm:max-w-[510px]
-    sm:text-[52px]
+                sm:max-w-[510px]
+                sm:text-[52px]
 
-    md:text-[58px]
-    lg:text-[60px]
-    xl:text-[66px]
-  "
+                md:text-[58px]
+                lg:text-[60px]
+                xl:text-[66px]
+              "
             >
               Tu lugar ideal
               <br />

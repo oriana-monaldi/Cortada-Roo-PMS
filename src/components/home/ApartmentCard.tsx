@@ -1,4 +1,5 @@
 import { ArrowRight, BedDouble, Snowflake, UsersRound } from "lucide-react";
+import { Link } from "react-router-dom";
 
 type ApartmentCardData = {
   id: string | number;
@@ -22,7 +23,6 @@ type ApartmentCardData = {
   pricePerNight?: number | string;
 
   badge?: string;
-  href?: string;
 };
 
 type ApartmentCardProps = {
@@ -67,13 +67,18 @@ const ApartmentCard = ({ apartment }: ApartmentCardProps) => {
         border border-neutral-200
         bg-white
         shadow-[0_8px_24px_rgba(0,0,0,0.05)]
-        transition
+        transition duration-300
+
         hover:-translate-y-1
         hover:shadow-[0_14px_34px_rgba(0,0,0,0.08)]
       "
     >
       {/* Imagen */}
-      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
+      <Link
+        to={`/apartamentos/${apartment.id}`}
+        aria-label={`Ver detalles de ${title}`}
+        className="group relative block aspect-[16/10] overflow-hidden bg-neutral-100"
+      >
         {image && (
           <img
             src={image}
@@ -81,7 +86,7 @@ const ApartmentCard = ({ apartment }: ApartmentCardProps) => {
             className="
               h-full w-full object-cover
               transition-transform duration-500
-              hover:scale-[1.04]
+              group-hover:scale-[1.04]
             "
           />
         )}
@@ -89,29 +94,30 @@ const ApartmentCard = ({ apartment }: ApartmentCardProps) => {
         <span
           className="
             absolute left-4 top-4
-            rounded-lg
-            bg-white/95
+            rounded-lg bg-white/95
             px-3 py-1.5
-            text-[10px]
-            font-semibold
-            uppercase
-            tracking-[0.08em]
-            text-neutral-900
+            text-[10px] font-semibold uppercase
+            tracking-[0.08em] text-neutral-900
             shadow-sm
           "
         >
           {badge}
         </span>
-      </div>
+      </Link>
 
       {/* Contenido */}
       <div className="px-4 pb-4 pt-3">
-        <h3 className="text-base font-semibold text-neutral-950">{title}</h3>
+        <Link to={`/apartamentos/${apartment.id}`}>
+          <h3 className="text-base font-semibold text-neutral-950 transition-colors hover:text-[#9b6f45]">
+            {title}
+          </h3>
+        </Link>
 
         {/* Características */}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-neutral-500">
           <div className="flex items-center gap-1.5">
             <UsersRound size={14} strokeWidth={1.6} />
+
             <span>
               {guests} {guests === 1 ? "huésped" : "huéspedes"}
             </span>
@@ -148,22 +154,21 @@ const ApartmentCard = ({ apartment }: ApartmentCardProps) => {
         </div>
 
         {/* Botón */}
-        <a
-          href={apartment.href || "#contacto"}
+        <Link
+          to={`/apartamentos/${apartment.id}`}
           className="
             mt-4 flex h-11 w-full
             items-center justify-center gap-2
-            rounded-xl
-            bg-neutral-950
+            rounded-xl bg-neutral-950
             text-sm font-semibold text-white
-            transition
+            transition-colors
 
             hover:bg-neutral-800
           "
         >
           Ver habitación
           <ArrowRight size={16} strokeWidth={1.8} />
-        </a>
+        </Link>
       </div>
     </article>
   );

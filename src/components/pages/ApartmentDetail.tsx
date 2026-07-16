@@ -4,8 +4,6 @@ import {
   BedDouble,
   CalendarDays,
   Camera,
-  ChevronDown,
-  ChevronRight,
   Dumbbell,
   KeyRound,
   MapPin,
@@ -15,17 +13,22 @@ import {
   Sparkles,
   Tv,
   UtensilsCrossed,
+  UsersRound,
   Wifi,
-  X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { DayPicker, type DateRange } from "@daypicker/react";
-import { es } from "@daypicker/react/locale";
-import "@daypicker/react/style.css";
-import { Link, useParams } from "react-router-dom";
+import { type FormEvent, useMemo, useState } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
 import { apartments } from "../../data/apartments";
+import { createReservation } from "../../services/reservationService";
 import ApartmentGallery from "../ui/ApartmentGallery";
+
+const DAY_IN_MILLISECONDS = 86_400_000;
 
 const getServiceIcon = (service: string) => {
   const normalizedService = service.toLowerCase();
@@ -169,83 +172,75 @@ const getShortServiceName = (service: string) => {
   return service;
 };
 
-const formatDisplayDate = (date?: Date) => {
-  if (!date) return "Seleccionar";
+const parseQueryDate = (value: string | null) => {
+  if (!value) return null;
 
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+};
+
+const formatDate = (date: Date) => {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
-    month: "2-digit",
+    month: "short",
     year: "numeric",
   }).format(date);
 };
 
-const formatQueryDate = (date?: Date) => {
-  if (!date) return "";
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+const formatPrice = (price: number) => {
+  return price.toLocaleString("es-AR");
 };
 
-const normalizeDate = (date: Date) => {
-  const normalizedDate = new Date(date);
+const calculateNights = (checkIn: Date, checkOut: Date) => {
+  const difference = checkOut.getTime() - checkIn.getTime();
 
-  normalizedDate.setHours(0, 0, 0, 0);
-
-  return normalizedDate;
+  return Math.max(Math.round(difference / DAY_IN_MILLISECONDS), 0);
 };
 
 const ApartmentDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const apartment = apartments.find((item) => item.id === id);
 
-  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
+  const checkIn = useMemo(
+    () => parseQueryDate(searchParams.get("from")),
+    [searchParams],
+  );
 
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [guests, setGuests] = useState(1);
+  const checkOut = useMemo(
+    () => parseQueryDate(searchParams.get("to")),
+    [searchParams],
+  );
 
-  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const guests = Number(searchParams.get("guests"));
 
-  const today = useMemo(() => normalizeDate(new Date()), []);
+  const hasReservationData = Boolean(
+    checkIn &&
+    checkOut &&
+    checkOut > checkIn &&
+    Number.isInteger(guests) &&
+    guests > 0 &&
+    apartment &&
+    guests <= apartment.capacity,
+  );
 
-  useEffect(() => {
-    if (!isCalendarOpen) return;
+  const nights = checkIn && checkOut ? calculateNights(checkIn, checkOut) : 0;
 
-    const handleOutsideClick = (event: MouseEvent) => {
-      const target = event.target as Node;
+  const totalPrice = apartment ? nights * apartment.pricePerNight : 0;
 
-      if (
-        calendarContainerRef.current &&
-        !calendarContainerRef.current.contains(target)
-      ) {
-        setIsCalendarOpen(false);
-      }
-    };
+  const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
 
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsCalendarOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleOutsideClick);
-    window.addEventListener("keydown", handleEscape);
-
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [isCalendarOpen]);
-
-  useEffect(() => {
-    if (selectedRange?.from && selectedRange?.to) {
-      setIsCalendarOpen(false);
-    }
-  }, [selectedRange]);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   if (!apartment) {
     return (
       <section className="min-h-screen bg-[#faf9f7] px-5 pb-12 pt-28 sm:px-8 lg:px-12">
@@ -255,17 +250,12 @@ const ApartmentDetail = () => {
           </h1>
 
           <p className="mt-3 max-w-lg text-sm leading-6 text-neutral-600">
-            La habitación que intentás consultar no existe o no se encuentra
-            disponible.
+            La habitación que intentás consultar no existe.
           </p>
 
           <Link
             to="/#apartamentos"
-            className="
-              mt-6 inline-flex items-center gap-2
-              text-sm font-semibold text-neutral-700
-              transition hover:text-neutral-950
-            "
+            className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-neutral-700 transition hover:text-neutral-950"
           >
             <ArrowLeft size={16} strokeWidth={1.8} />
             Volver a habitaciones
@@ -275,14 +265,58 @@ const ApartmentDetail = () => {
     );
   }
 
-  const availabilityUrl = `/disponibilidad?${new URLSearchParams({
-    apartment: apartment.id,
-    from: formatQueryDate(selectedRange?.from),
-    to: formatQueryDate(selectedRange?.to),
-    guests: String(guests),
-  }).toString()}`;
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
-  const hasCompleteRange = Boolean(selectedRange?.from && selectedRange?.to);
+    if (!hasReservationData || !checkIn || !checkOut) {
+      setSubmitError("Las fechas o la cantidad de huéspedes no son válidas.");
+      return;
+    }
+
+    if (!guestName.trim()) {
+      setSubmitError("Ingresá tu nombre y apellido.");
+      return;
+    }
+
+    if (!guestEmail.trim()) {
+      setSubmitError("Ingresá tu correo electrónico.");
+      return;
+    }
+
+    if (!guestPhone.trim()) {
+      setSubmitError("Ingresá tu teléfono.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const result = await createReservation({
+        apartmentId: apartment.id,
+        apartmentName: apartment.name,
+        guestName,
+        guestEmail,
+        guestPhone,
+        guests,
+        checkIn,
+        checkOut,
+        pricePerNight: apartment.pricePerNight,
+      });
+
+      navigate(`/reserva-exitosa?id=${result.id}`);
+    } catch (error) {
+      console.error("Error al crear la reserva:", error);
+
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "No pudimos crear la reserva. Intentá nuevamente.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <main className="bg-[#faf9f7]">
@@ -291,12 +325,7 @@ const ApartmentDetail = () => {
         <div className="mx-auto w-full max-w-[1220px]">
           <Link
             to="/#apartamentos"
-            className="
-              inline-flex items-center gap-2
-              text-xs font-medium text-neutral-500
-              transition hover:text-neutral-950
-              sm:text-sm
-            "
+            className="inline-flex items-center gap-2 text-xs font-medium text-neutral-500 transition hover:text-neutral-950 sm:text-sm"
           >
             <ArrowLeft size={15} strokeWidth={1.8} />
             Volver a habitaciones
@@ -307,13 +336,7 @@ const ApartmentDetail = () => {
               Cortada Roo
             </p>
 
-            <h1
-              className="
-                mt-2 font-serif text-3xl font-semibold
-                leading-tight text-neutral-950
-                sm:text-4xl lg:text-[42px]
-              "
-            >
+            <h1 className="mt-2 font-serif text-3xl font-semibold leading-tight text-neutral-950 sm:text-4xl lg:text-[42px]">
               {apartment.name}
             </h1>
           </div>
@@ -322,14 +345,7 @@ const ApartmentDetail = () => {
 
       {/* Galería y reserva */}
       <section className="bg-white px-5 pb-10 sm:px-8 sm:pb-12 lg:px-12">
-        <div
-          className="
-            mx-auto grid w-full max-w-[1220px]
-            gap-6
-            lg:grid-cols-[minmax(0,1fr)_350px]
-            lg:items-start
-          "
-        >
+        <div className="mx-auto grid w-full max-w-[1220px] gap-6 lg:grid-cols-[minmax(0,1fr)_370px] lg:items-start">
           <div className="min-w-0">
             <ApartmentGallery
               images={apartment.images}
@@ -337,221 +353,173 @@ const ApartmentDetail = () => {
             />
           </div>
 
-          {/* Selector de reserva */}
-          <aside
-            ref={calendarContainerRef}
-            className="
-              relative rounded-2xl border border-neutral-200
-              bg-white p-5
-              shadow-[0_10px_26px_rgba(0,0,0,0.06)]
-              lg:mt-[31px]
-            "
-          >
-            <div className="border-b border-neutral-100 pb-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a57b52]">
-                Reserva
-              </p>
+          <aside className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)] lg:mt-[31px]">
+            {hasReservationData && checkIn && checkOut ? (
+              <>
+                <div className="border-b border-neutral-100 pb-4">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a57b52]">
+                    Tu estadía
+                  </p>
 
-              <h2 className="mt-1.5 font-serif text-xl font-semibold text-neutral-950">
-                Consultá disponibilidad
-              </h2>
-            </div>
+                  <h2 className="mt-1.5 font-serif text-xl font-semibold text-neutral-950">
+                    Completá tu reserva
+                  </h2>
+                </div>
 
-            {/* Campos Desde / Hasta */}
-            <button
-              type="button"
-              onClick={() => setIsCalendarOpen((current) => !current)}
-              className="
-                mt-4 grid w-full grid-cols-2
-                overflow-hidden rounded-xl border
-                border-neutral-200 bg-white text-left
-                transition hover:border-neutral-400
-                focus:outline-none focus:ring-2
-                focus:ring-[#d7b58d]/40
-              "
-              aria-expanded={isCalendarOpen}
-            >
-              <span className="border-r border-neutral-200 px-3 py-3">
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-                  Desde
-                </span>
+                {/* Resumen */}
+                <div className="mt-4 rounded-xl bg-[#f5f2ed] p-4">
+                  <div className="flex gap-3">
+                    <CalendarDays
+                      size={18}
+                      strokeWidth={1.7}
+                      className="mt-0.5 shrink-0 text-[#9b6f45]"
+                    />
 
-                <span className="mt-1 flex items-center justify-between gap-2 text-sm font-medium text-neutral-900">
-                  {formatDisplayDate(selectedRange?.from)}
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-900">
+                        {formatDate(checkIn)} — {formatDate(checkOut)}
+                      </p>
 
-                  <CalendarDays
-                    size={15}
-                    strokeWidth={1.7}
-                    className="shrink-0 text-neutral-500"
-                  />
-                </span>
-              </span>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        {nights} {nights === 1 ? "noche" : "noches"}
+                      </p>
+                    </div>
+                  </div>
 
-              <span className="px-3 py-3">
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-neutral-500">
-                  Hasta
-                </span>
+                  <div className="mt-3 flex gap-3 border-t border-neutral-200 pt-3">
+                    <UsersRound
+                      size={18}
+                      strokeWidth={1.7}
+                      className="shrink-0 text-[#9b6f45]"
+                    />
 
-                <span className="mt-1 flex items-center justify-between gap-2 text-sm font-medium text-neutral-900">
-                  {formatDisplayDate(selectedRange?.to)}
+                    <p className="text-sm text-neutral-700">
+                      {guests} {guests === 1 ? "huésped" : "huéspedes"}
+                    </p>
+                  </div>
+                </div>
 
-                  <CalendarDays
-                    size={15}
-                    strokeWidth={1.7}
-                    className="shrink-0 text-neutral-500"
-                  />
-                </span>
-              </span>
-            </button>
-
-            {/* Calendario emergente */}
-            {isCalendarOpen && (
-              <div
-                className="
-                  absolute right-0 top-[150px] z-40
-                  w-[min(340px,calc(100vw-2rem))]
-                  rounded-2xl border border-neutral-200
-                  bg-white p-3
-                  shadow-[0_18px_55px_rgba(0,0,0,0.16)]
-                  sm:p-4
-                "
-              >
-                <div className="mb-3 flex items-center justify-between">
+                {/* Precio */}
+                <div className="mt-4 flex items-end justify-between gap-4 border-b border-neutral-100 pb-4">
                   <div>
-                    <p className="text-sm font-semibold text-neutral-950">
-                      Elegí tu estadía
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
+                      Total
                     </p>
 
-                    <p className="mt-0.5 text-xs text-neutral-500">
-                      Seleccioná la fecha de ingreso y salida.
+                    <p className="mt-1 font-serif text-2xl font-bold text-neutral-950">
+                      ${formatPrice(totalPrice)}
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsCalendarOpen(false)}
-                    className="
-                      flex h-8 w-8 items-center justify-center
-                      rounded-full text-neutral-500
-                      transition hover:bg-neutral-100
-                      hover:text-neutral-950
-                    "
-                    aria-label="Cerrar calendario"
-                  >
-                    <X size={17} />
-                  </button>
-                </div>
-
-                <DayPicker
-                  mode="range"
-                  locale={es}
-                  lang="es-AR"
-                  selected={selectedRange}
-                  onSelect={setSelectedRange}
-                  disabled={{ before: today }}
-                  defaultMonth={selectedRange?.from ?? today}
-                  min={1}
-                  resetOnSelect
-                  showOutsideDays
-                  className="cortada-date-picker"
-                />
-
-                <div className="mt-3 flex items-center justify-between border-t border-neutral-100 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRange(undefined)}
-                    className="
-                      text-xs font-semibold text-neutral-500
-                      transition hover:text-neutral-950
-                    "
-                  >
-                    Limpiar
-                  </button>
-
-                  <p className="text-xs text-neutral-500">
-                    {selectedRange?.from && !selectedRange?.to
-                      ? "Ahora elegí la fecha de salida"
-                      : selectedRange?.from && selectedRange?.to
-                        ? "Fechas seleccionadas"
-                        : "Elegí la fecha de ingreso"}
+                  <p className="text-right text-xs leading-5 text-neutral-500">
+                    ${formatPrice(apartment.pricePerNight)}
+                    <br />
+                    por noche
                   </p>
                 </div>
-              </div>
-            )}
 
-            {/* Huéspedes */}
-            <label className="mt-4 block">
-              <span className="mb-1.5 block text-xs font-semibold text-neutral-700">
-                Huéspedes
-              </span>
+                {/* Formulario */}
+                <form onSubmit={handleSubmit} className="mt-4">
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-semibold text-neutral-700">
+                      Nombre y apellido
+                    </span>
 
-              <div className="relative">
-                <select
-                  value={guests}
-                  onChange={(event) => setGuests(Number(event.target.value))}
-                  className="
-                    h-11 w-full appearance-none rounded-lg
-                    border border-neutral-200 bg-white
-                    px-3 pr-9 text-sm text-neutral-700
-                    outline-none transition
-                    focus:border-neutral-500
-                  "
-                >
-                  {Array.from(
-                    { length: apartment.capacity },
-                    (_, index) => index + 1,
-                  ).map((guest) => (
-                    <option key={guest} value={guest}>
-                      {guest} {guest === 1 ? "persona" : "personas"}
-                    </option>
-                  ))}
-                </select>
+                    <input
+                      type="text"
+                      value={guestName}
+                      onChange={(event) => {
+                        setGuestName(event.target.value);
+                        setSubmitError("");
+                      }}
+                      autoComplete="name"
+                      className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
+                      placeholder="Ej. Juan Pérez"
+                    />
+                  </label>
 
-                <ChevronDown
-                  size={16}
-                  strokeWidth={1.7}
-                  className="
-                    pointer-events-none absolute right-3 top-1/2
-                    -translate-y-1/2 text-neutral-500
-                  "
-                />
-              </div>
-            </label>
+                  <label className="mt-3 block">
+                    <span className="mb-1.5 block text-xs font-semibold text-neutral-700">
+                      Email
+                    </span>
 
-            {hasCompleteRange ? (
-              <Link
-                to={availabilityUrl}
-                className="
-                  mt-5 inline-flex h-11 w-full
-                  items-center justify-center gap-2
-                  rounded-lg bg-neutral-950 px-5
-                  text-sm font-semibold text-white
-                  transition hover:bg-neutral-800
-                "
-              >
-                Consultar disponibilidad
-                <ChevronRight size={16} strokeWidth={1.8} />
-              </Link>
+                    <input
+                      type="email"
+                      value={guestEmail}
+                      onChange={(event) => {
+                        setGuestEmail(event.target.value);
+                        setSubmitError("");
+                      }}
+                      autoComplete="email"
+                      className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
+                      placeholder="nombre@email.com"
+                    />
+                  </label>
+
+                  <label className="mt-3 block">
+                    <span className="mb-1.5 block text-xs font-semibold text-neutral-700">
+                      Teléfono
+                    </span>
+
+                    <input
+                      type="tel"
+                      value={guestPhone}
+                      onChange={(event) => {
+                        setGuestPhone(event.target.value);
+                        setSubmitError("");
+                      }}
+                      autoComplete="tel"
+                      className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
+                      placeholder="Ej. 3471 123456"
+                    />
+                  </label>
+
+                  {submitError && (
+                    <p
+                      role="alert"
+                      className="mt-4 rounded-xl bg-red-50 px-3 py-2.5 text-xs font-medium leading-5 text-red-700"
+                    >
+                      {submitError}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="mt-5 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#9b6f45] px-5 text-sm font-semibold text-white transition hover:bg-[#845b39] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isSubmitting ? "Enviando reserva..." : "Confirmar reserva"}
+                  </button>
+
+                  <p className="mt-3 text-center text-[10px] leading-4 text-neutral-500">
+                    La solicitud quedará pendiente hasta que el alojamiento la
+                    confirme.
+                  </p>
+                </form>
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={() => setIsCalendarOpen(true)}
-                className="
-                  mt-5 inline-flex h-11 w-full
-                  items-center justify-center gap-2
-                  rounded-lg bg-neutral-950 px-5
-                  text-sm font-semibold text-white
-                  transition hover:bg-neutral-800
-                "
-              >
-                Elegir fechas
-                <CalendarDays size={16} strokeWidth={1.8} />
-              </button>
-            )}
+              <div className="py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a57b52]">
+                  Reserva
+                </p>
 
-            <p className="mt-3 text-center text-[10px] leading-4 text-neutral-500">
-              La consulta no confirma automáticamente la reserva.
-            </p>
+                <h2 className="mt-2 font-serif text-xl font-semibold text-neutral-950">
+                  Primero consultá disponibilidad
+                </h2>
+
+                <p className="mt-3 text-sm leading-6 text-neutral-600">
+                  Elegí las fechas y la cantidad de huéspedes desde el buscador
+                  principal para reservar esta habitación.
+                </p>
+
+                <Link
+                  to="/#reservar"
+                  className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800"
+                >
+                  Consultar disponibilidad
+                </Link>
+              </div>
+            )}
           </aside>
         </div>
       </section>
@@ -578,24 +546,14 @@ const ApartmentDetail = () => {
               Servicios incluidos
             </h2>
 
-            <div
-              className="
-                mt-6 grid grid-cols-2
-                gap-x-5 gap-y-5
-                sm:grid-cols-3 lg:grid-cols-4
-              "
-            >
+            <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
               {apartment.services.map((service) => {
                 const Icon = getServiceIcon(service);
 
                 return (
                   <div
                     key={service}
-                    className="
-                      flex min-w-0 items-center gap-2.5
-                      text-xs text-neutral-700
-                      sm:text-sm
-                    "
+                    className="flex min-w-0 items-center gap-2.5 text-xs text-neutral-700 sm:text-sm"
                   >
                     <Icon
                       size={17}

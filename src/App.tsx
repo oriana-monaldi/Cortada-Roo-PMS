@@ -1,12 +1,21 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 
+import AdminLayout from "./admin/layouts/AdminLayout";
+import Dashboard from "./admin/pages/Dashboard";
+import Login from "./admin/pages/Login";
+import Reservations from "./admin/pages/Reservations";
+import ProtectedRoute from "./admin/routes/ProtectedRoute";
+
 import PublicLayout from "./components/layouts/PublicLayout";
-import Home from "./components/pages/Home";
 import ApartmentDetail from "./components/pages/ApartmentDetail";
+import Availability from "./components/pages/Availability";
+import Home from "./components/pages/Home";
+import ReservationSuccess from "./components/pages/ReservationSuccess";
 
 function App() {
   return (
     <Routes>
+      {/* Sitio público */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Home />} />
 
@@ -16,9 +25,23 @@ function App() {
         />
 
         <Route path="/apartamentos/:id" element={<ApartmentDetail />} />
-
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/disponibilidad" element={<Availability />} />
+        <Route path="/reserva-exitosa" element={<ReservationSuccess />} />
       </Route>
+
+      {/* Login administrador */}
+      <Route path="/admin/login" element={<Login />} />
+
+      {/* Rutas protegidas del administrador */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<Dashboard />} />
+          <Route path="/admin/reservas" element={<Reservations />} />
+        </Route>
+      </Route>
+
+      {/* Ruta no encontrada */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

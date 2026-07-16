@@ -140,7 +140,7 @@ const BookingDateRangePicker = ({
       : "border-[#d8b07a]/50 hover:border-[#d8b07a] hover:bg-[#fbf6f0]"
   }
 `}
-        a-expanded={isOpen}
+        aria-expanded={isOpen}
       >
         {/* Check-in */}
         <span className="min-w-0 border-r border-[#d8c8b7] px-3 py-2.5">
