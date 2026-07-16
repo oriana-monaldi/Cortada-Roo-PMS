@@ -8,3 +8,24 @@ body {
   margin: 0;
   min-width: 320px;
 }
+
+.gallery-track {
+  display: flex;
+  width: max-content;
+  animation: gallery-scroll 60s linear infinite;
+  will-change: transform;
+}
+
+.gallery-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes gallery-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
