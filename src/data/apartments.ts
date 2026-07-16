@@ -31,6 +31,24 @@ export type Apartment = {
   services: string[];
 };
 
+const defaultServices = [
+  "Internet de alta velocidad con Starlink",
+  "WiFi de alta velocidad",
+  "Aire acondicionado",
+  "Smart TV",
+  "Cocina totalmente equipada",
+  "Baño privado",
+  "Ropa de cama",
+  "Toallas",
+  "Ingreso independiente",
+  "Acceso mediante código",
+  "Gimnasio exclusivo para huéspedes",
+  "Espacios comunes modernos",
+  "Cámaras de seguridad",
+  "Instalaciones nuevas",
+  "Ubicación céntrica",
+];
+
 export const apartments: Apartment[] = [
   {
     id: "individual",
@@ -38,7 +56,7 @@ export const apartments: Apartment[] = [
     shortName: "Individual",
     description: "Una opción cómoda y funcional para quienes viajan solos.",
     longDescription:
-      "La habitación individual está pensada para quienes buscan tranquilidad, privacidad y comodidad durante su estadía. Cuenta con un ambiente completamente equipado y acceso a los servicios generales del complejo.",
+      "Ideal para quienes buscan una estadía tranquila y confortable. Su diseño moderno, excelente iluminación y equipamiento completo ofrecen el equilibrio perfecto entre comodidad y funcionalidad, tanto para viajes de trabajo como de descanso.",
     image: img3,
     images: [
       img3,
@@ -56,61 +74,47 @@ export const apartments: Apartment[] = [
     capacity: 1,
     totalUnits: 2,
     pricePerNight: 110000,
-    services: [
-      "WiFi de alta velocidad",
-      "Aire acondicionado",
-      "Smart TV",
-      "Cocina equipada",
-      "Baño privado",
-      "Ropa de cama y toallas",
-      "Ingreso independiente",
-      "Acceso mediante código",
-    ],
+    services: defaultServices,
   },
+
   {
     id: "doble",
     name: "Habitación Doble",
     shortName: "Doble",
     description: "Una alternativa cómoda para dos huéspedes.",
     longDescription:
-      "La habitación doble ofrece un espacio cómodo y funcional para dos personas. Es ideal para parejas, compañeros de trabajo o huéspedes que buscan una estadía práctica con todos los servicios necesarios.",
+      "Pensada para compartir una estadía agradable, esta habitación combina amplitud, confort y un ambiente moderno con todas las comodidades necesarias para disfrutar cada momento.",
     image: img24,
-    images: [img2, img22, img21, img23, img16, img14, img13, img10, img9],
+    images: [
+      img24,
+      img2,
+      img22,
+      img21,
+      img23,
+      img16,
+      img14,
+      img13,
+      img10,
+      img9,
+    ],
     capacity: 2,
     totalUnits: 3,
     pricePerNight: 130000,
-    services: [
-      "WiFi de alta velocidad",
-      "Aire acondicionado",
-      "Smart TV",
-      "Cocina equipada",
-      "Baño privado",
-      "Ropa de cama y toallas",
-      "Ingreso independiente",
-      "Acceso mediante código",
-    ],
+    services: defaultServices,
   },
+
   {
     id: "triple",
     name: "Habitación Triple",
     shortName: "Triple",
     description: "Una opción amplia para grupos de hasta tres personas.",
     longDescription:
-      "La habitación triple está diseñada para grupos pequeños o familias que necesitan mayor capacidad sin perder comodidad. Cuenta con ambientes funcionales y todos los servicios necesarios para una estadía agradable.",
+      "Espacios amplios y completamente equipados para brindar una experiencia cómoda a familias o grupos pequeños, manteniendo el estilo moderno y la calidad que caracterizan al complejo.",
     image: img24,
     images: [img24, img2, img3, img9, img10, img11, img13, img14, img16, img8],
     capacity: 3,
     totalUnits: 2,
     pricePerNight: 150000,
-    services: [
-      "WiFi de alta velocidad",
-      "Aire acondicionado",
-      "Smart TV",
-      "Cocina equipada",
-      "Baño privado",
-      "Ropa de cama y toallas",
-      "Ingreso independiente",
-      "Acceso mediante código",
-    ],
+    services: defaultServices,
   },
 ];

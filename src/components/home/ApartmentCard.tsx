@@ -1,131 +1,169 @@
-import { ArrowRight, BedDouble, Snowflake, Users, Wifi } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ArrowRight, BedDouble, Snowflake, UsersRound } from "lucide-react";
 
-import type { Apartment } from "../../data/apartments";
+type ApartmentCardData = {
+  id: string | number;
 
-type ApartmentCardProps = {
-  apartment: Apartment;
+  name?: string;
+  title?: string;
+
+  image?: string;
+  imageUrl?: string;
+  images?: string[];
+
+  guests?: number;
+  capacity?: number;
+  maxGuests?: number;
+
+  type?: string;
+  roomType?: string;
+  bedType?: string;
+
+  price?: number | string;
+  pricePerNight?: number | string;
+
+  badge?: string;
+  href?: string;
 };
 
-const formatPrice = (price: number) => {
-  return new Intl.NumberFormat("es-AR", {
-    maximumFractionDigits: 0,
-  }).format(price);
+type ApartmentCardProps = {
+  apartment: ApartmentCardData;
+};
+
+const formatPrice = (value: number | string | undefined) => {
+  if (value === undefined || value === null || value === "") {
+    return "Consultar";
+  }
+
+  const numericValue = Number(value);
+
+  if (Number.isNaN(numericValue)) {
+    return String(value);
+  }
+
+  return numericValue.toLocaleString("es-AR");
 };
 
 const ApartmentCard = ({ apartment }: ApartmentCardProps) => {
+  const title = apartment.name || apartment.title || "Habitación";
+
+  const image =
+    apartment.image || apartment.imageUrl || apartment.images?.[0] || "";
+
+  const guests =
+    apartment.guests || apartment.capacity || apartment.maxGuests || 1;
+
+  const roomType =
+    apartment.type || apartment.roomType || apartment.bedType || "Habitación";
+
+  const price = apartment.pricePerNight ?? apartment.price;
+
+  const badge =
+    apartment.badge || `${guests} ${guests === 1 ? "huésped" : "huéspedes"}`;
+
   return (
     <article
       className="
-        group flex h-full flex-col overflow-hidden rounded-2xl
-        border border-neutral-200 bg-white
-        shadow-[0_4px_20px_rgba(0,0,0,0.05)]
-        transition duration-300
+        overflow-hidden rounded-2xl
+        border border-neutral-200
+        bg-white
+        shadow-[0_8px_24px_rgba(0,0,0,0.05)]
+        transition
         hover:-translate-y-1
-        hover:shadow-[0_14px_35px_rgba(0,0,0,0.1)]
+        hover:shadow-[0_14px_34px_rgba(0,0,0,0.08)]
       "
     >
       {/* Imagen */}
-      <Link
-        to={`/apartamentos/${apartment.id}`}
-        className="relative block h-[190px] overflow-hidden sm:h-[215px] lg:h-[235px]"
-        aria-label={`Ver detalle de ${apartment.name}`}
-      >
-        <img
-          src={apartment.image}
-          alt={apartment.name}
-          className="
-            h-full w-full object-cover object-top
-            transition duration-500
-            group-hover:scale-105
-          "
-        />
+      <div className="relative aspect-[16/10] overflow-hidden bg-neutral-100">
+        {image && (
+          <img
+            src={image}
+            alt={title}
+            className="
+              h-full w-full object-cover
+              transition-transform duration-500
+              hover:scale-[1.04]
+            "
+          />
+        )}
 
         <span
           className="
             absolute left-4 top-4
-            rounded-md bg-white/95
+            rounded-lg
+            bg-white/95
             px-3 py-1.5
-            text-[10px] font-bold uppercase
-            tracking-[0.08em] text-neutral-900
-            shadow-md backdrop-blur-sm
+            text-[10px]
+            font-semibold
+            uppercase
+            tracking-[0.08em]
+            text-neutral-900
+            shadow-sm
           "
         >
-          {apartment.capacity}{" "}
-          {apartment.capacity === 1 ? "huésped" : "huéspedes"}
+          {badge}
         </span>
-      </Link>
+      </div>
 
       {/* Contenido */}
-      <div className="flex flex-1 flex-col p-4 sm:p-5">
-        <Link to={`/apartamentos/${apartment.id}`} className="w-fit">
-          <h3
-            className="
-              text-sm font-bold uppercase tracking-[0.04em]
-              text-neutral-950 transition
-              group-hover:text-[#9b6f45]
-            "
-          >
-            {apartment.name}
-          </h3>
-        </Link>
+      <div className="px-4 pb-4 pt-3">
+        <h3 className="text-base font-semibold text-neutral-950">{title}</h3>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 text-[11px] text-neutral-500">
-          <span className="flex items-center gap-1.5">
-            <Users size={14} strokeWidth={1.7} />
-            {apartment.capacity}{" "}
-            {apartment.capacity === 1 ? "huésped" : "huéspedes"}
-          </span>
+        {/* Características */}
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-neutral-500">
+          <div className="flex items-center gap-1.5">
+            <UsersRound size={14} strokeWidth={1.6} />
+            <span>
+              {guests} {guests === 1 ? "huésped" : "huéspedes"}
+            </span>
+          </div>
 
-          <span className="flex items-center gap-1.5">
-            <BedDouble size={14} strokeWidth={1.7} />
+          <div className="flex items-center gap-1.5">
+            <BedDouble size={14} strokeWidth={1.6} />
+            <span>{roomType}</span>
+          </div>
 
-            {apartment.shortName}
-          </span>
-
-          <span className="flex items-center gap-1.5">
-            <Wifi size={14} strokeWidth={1.7} />
-            WiFi
-          </span>
-
-          <span className="flex items-center gap-1.5">
-            <Snowflake size={14} strokeWidth={1.7} />
-            Aire acondicionado
-          </span>
-        </div>
-
-        <div className="mt-auto pt-5">
-          <div className="border-t border-neutral-100 pt-4">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
-              Desde
-            </p>
-
-            <div className="mt-1 flex items-baseline gap-1">
-              <span className="text-xl font-bold text-neutral-950">
-                ${formatPrice(apartment.pricePerNight)}
-              </span>
-
-              <span className="text-[10px] text-neutral-500">por noche</span>
-            </div>
-
-            <Link
-              to={`/apartamentos/${apartment.id}`}
-              className="
-                mt-4 inline-flex min-h-11 w-full
-                items-center justify-center gap-2
-                rounded-lg bg-neutral-950 px-5
-                text-sm font-semibold text-white
-                transition duration-200
-                hover:bg-[#9b6f45]
-                focus:outline-none focus:ring-2
-                focus:ring-[#d7b58d] focus:ring-offset-2
-              "
-            >
-              Ver habitación
-              <ArrowRight size={17} strokeWidth={1.8} />
-            </Link>
+          <div className="flex items-center gap-1.5">
+            <Snowflake size={14} strokeWidth={1.6} />
+            <span>Aire acondicionado</span>
           </div>
         </div>
+
+        {/* Precio */}
+        <div className="mt-4 border-t border-neutral-200 pt-3">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-neutral-500">
+            Desde
+          </p>
+
+          <div className="mt-1 flex items-end gap-2">
+            <p className="font-serif text-[21px] font-bold leading-none text-neutral-950">
+              {price !== undefined ? `$${formatPrice(price)}` : "Consultar"}
+            </p>
+
+            {price !== undefined && (
+              <span className="pb-[2px] text-[11px] text-neutral-500">
+                por noche
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Botón */}
+        <a
+          href={apartment.href || "#contacto"}
+          className="
+            mt-4 flex h-11 w-full
+            items-center justify-center gap-2
+            rounded-xl
+            bg-neutral-950
+            text-sm font-semibold text-white
+            transition
+
+            hover:bg-neutral-800
+          "
+        >
+          Ver habitación
+          <ArrowRight size={16} strokeWidth={1.8} />
+        </a>
       </div>
     </article>
   );

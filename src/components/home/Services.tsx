@@ -1,42 +1,42 @@
 import {
+  Camera,
   Dumbbell,
   KeyRound,
   Snowflake,
-  Tv,
   UtensilsCrossed,
   Wifi,
 } from "lucide-react";
 
 const services = [
   {
-    title: "WiFi de alta velocidad",
-    description: "Conexión estable para trabajar, estudiar o disfrutar.",
+    title: "Internet Starlink",
+    subtitle: "Conexión rápida y estable",
     icon: Wifi,
   },
   {
+    title: "Gimnasio exclusivo",
+    subtitle: "Disponible para huéspedes",
+    icon: Dumbbell,
+  },
+  {
+    title: "Acceso mediante código",
+    subtitle: "Ingreso independiente",
+    icon: KeyRound,
+  },
+  {
     title: "Cocina equipada",
-    description: "Todo lo necesario para una estadía cómoda.",
+    subtitle: "Todo listo para cocinar",
     icon: UtensilsCrossed,
   },
   {
     title: "Aire acondicionado",
-    description: "Ambientes climatizados durante todo el año.",
+    subtitle: "Frío y calor",
     icon: Snowflake,
   },
   {
-    title: "Smart TV",
-    description: "Entretenimiento disponible en cada apartamento.",
-    icon: Tv,
-  },
-  {
-    title: "Acceso independiente",
-    description: "Ingreso práctico y seguro mediante código.",
-    icon: KeyRound,
-  },
-  {
-    title: "Gimnasio",
-    description: "Espacio exclusivo para mantener tu rutina.",
-    icon: Dumbbell,
+    title: "Seguridad",
+    subtitle: "Cámaras en accesos",
+    icon: Camera,
   },
 ];
 
@@ -47,54 +47,74 @@ const Services = () => {
       className="bg-[#f5f2ed] px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20"
     >
       <div className="mx-auto w-full max-w-[1440px]">
+        {/* Encabezado (igual a Galería) */}
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a57b52] sm:text-sm">
             Servicios
           </p>
 
           <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-neutral-950 sm:text-4xl lg:text-5xl">
-            Todo lo que necesitás para una estadía cómoda
+            Todo lo que necesitás para sentirte como en casa
           </h2>
 
           <p className="mt-4 max-w-xl text-sm leading-6 text-neutral-600 sm:text-base">
-            Espacios completamente equipados y servicios pensados para que
-            disfrutes cada momento.
+            Espacios modernos, equipados y preparados para que disfrutes una
+            estadía cómoda y segura.
           </p>
         </div>
 
-        <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:mt-12 lg:grid-cols-3">
+        {/* Servicios */}
+        <div
+          className="
+            mt-14
+            grid grid-cols-2 gap-y-10
+            sm:grid-cols-3
+            lg:mt-16
+            lg:grid-cols-6
+            lg:gap-x-8
+          "
+        >
           {services.map((service) => {
             const Icon = service.icon;
 
             return (
-              <article
+              <div
                 key={service.title}
                 className="
-                  flex gap-4 rounded-2xl border border-neutral-200
-                  bg-white p-5 shadow-[0_4px_18px_rgba(0,0,0,0.04)]
-                  transition duration-300 hover:-translate-y-1
-                  hover:shadow-[0_10px_28px_rgba(0,0,0,0.08)]
+                  group
+                  flex flex-col items-center
+                  text-center
                 "
               >
                 <div
                   className="
-                    flex h-12 w-12 shrink-0 items-center justify-center
-                    rounded-full bg-[#f2e8dc] text-[#9b6f45]
+                    flex h-16 w-16 items-center justify-center
+                    rounded-full
+                    bg-[#efe5d8]
+                    transition-all duration-300
+                    group-hover:bg-[#a57b52]
                   "
                 >
-                  <Icon size={22} strokeWidth={1.7} />
+                  <Icon
+                    size={28}
+                    strokeWidth={1.6}
+                    className="
+                      text-[#a57b52]
+                      transition-all duration-300
+                      group-hover:text-white
+                      group-hover:scale-110
+                    "
+                  />
                 </div>
 
-                <div>
-                  <h3 className="text-base font-semibold text-neutral-950">
-                    {service.title}
-                  </h3>
+                <h3 className="mt-5 text-base font-semibold text-neutral-950">
+                  {service.title}
+                </h3>
 
-                  <p className="mt-2 text-sm leading-6 text-neutral-600">
-                    {service.description}
-                  </p>
-                </div>
-              </article>
+                <p className="mt-2 max-w-[180px] text-sm leading-6 text-neutral-600">
+                  {service.subtitle}
+                </p>
+              </div>
             );
           })}
         </div>

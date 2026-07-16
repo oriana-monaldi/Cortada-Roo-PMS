@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import {
   CalendarDays,
   ChevronDown,
@@ -6,85 +5,270 @@ import {
   Tag,
   UserRound,
 } from "lucide-react";
+import { useState } from "react";
+import type { DateRange } from "react-day-picker";
+import { useNavigate } from "react-router-dom";
 
 import heroImage from "../../assets/img1.jpeg";
+import BookingDateRangePicker from "../ui/BookingDateRangePicker";
+
+const formatQueryDate = (date?: Date) => {
+  if (!date) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 const HeroSection = () => {
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const navigate = useNavigate();
+
+  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
+  const [guests, setGuests] = useState(2);
+
+  const hasCompleteRange = Boolean(selectedRange?.from && selectedRange?.to);
+
+  const handleSearch = () => {
+    if (!selectedRange?.from || !selectedRange?.to) return;
+
+    const searchParams = new URLSearchParams({
+      from: formatQueryDate(selectedRange.from),
+      to: formatQueryDate(selectedRange.to),
+      guests: String(guests),
+    });
+
+    navigate(`/disponibilidad?${searchParams.toString()}`);
   };
 
   return (
-    <section className="relative bg-[#faf9f7]">
-      {/* Parte visual del Hero */}
-      <div className="relative min-h-[540px] overflow-hidden text-white sm:min-h-[560px] md:min-h-[550px] lg:min-h-[500px]">
+    <section className="relative h-[100svh] overflow-visible bg-[#faf9f7] text-white">
+      {/* Fondo */}
+      <div className="absolute inset-0 overflow-hidden">
         <img
           src={heroImage}
           alt="Complejo Apartamentos Cortada Roo"
           className="
-            absolute inset-0 h-full w-full object-cover
+            h-full w-full object-cover
             object-[58%_center]
             sm:object-center
+            lg:object-[center_58%]
           "
         />
 
-        {/* Overlay mobile */}
-        <div className="absolute inset-0 bg-black/25" />
+        <div className="absolute inset-0 bg-black/20" />
 
         <div
           className="
             absolute inset-0
             bg-gradient-to-b
-            from-black/45
+            from-black/55
             via-black/10
-            to-black/65
+            to-black/60
 
             md:bg-gradient-to-r
-            md:from-black/65
+            md:from-black/70
             md:via-black/25
-            md:to-transparent
+            md:to-black/5
           "
         />
+      </div>
 
-        {/* Contenido */}
+      {/* Contenido */}
+      <div
+        className="
+          relative z-10 mx-auto flex h-full
+          w-full max-w-[1440px]
+          flex-col
+          px-4 pb-8 pt-24
+
+          sm:px-6 sm:pt-24
+          md:px-8
+          lg:px-12 lg:pb-10 lg:pt-24
+        "
+      >
+        {/* Buscador */}
         <div
+          id="reservar"
           className="
-            relative z-10 mx-auto flex min-h-[540px] w-full max-w-[1440px]
-            flex-col justify-end px-4 pb-20 pt-24
+            relative z-40 w-full
 
-            sm:min-h-[560px] sm:px-6 sm:pb-24
-            md:min-h-[550px] md:justify-center md:px-8 md:pb-24
-            lg:min-h-[500px] lg:px-12 lg:pb-16 lg:pt-28
+            lg:ml-auto
+            lg:max-w-[1180px]
+
+            xl:max-w-[1240px]
           "
         >
-          <div className="max-w-xl">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ead8c2] sm:text-xs">
+          <div
+            className="
+              rounded-3xl
+              border border-white/40
+              bg-white/85
+              px-4 py-4
+              text-neutral-900
+              shadow-[0_12px_35px_rgba(0,0,0,0.15)]
+              backdrop-blur-xl
+
+              supports-[backdrop-filter]:bg-white/80
+
+              sm:px-5 sm:py-5
+              lg:px-6
+            "
+          >
+            <div
+              className="
+                grid grid-cols-1 gap-4
+
+                sm:grid-cols-2
+
+                lg:grid-cols-[minmax(0,2fr)_minmax(210px,0.75fr)_minmax(210px,auto)]
+                lg:items-end
+                lg:gap-3
+              "
+            >
+              {/* Fechas */}
+              <div className="min-w-0">
+                <BookingDateRangePicker
+                  selectedRange={selectedRange}
+                  onRangeChange={setSelectedRange}
+                />
+              </div>
+
+              {/* Huéspedes */}
+              <label className="block min-w-0">
+                <span className="mb-2 block text-xs font-semibold text-neutral-700">
+                  Huéspedes
+                </span>
+
+                <div className="relative">
+                  <UserRound
+                    size={17}
+                    strokeWidth={1.7}
+                    className="
+                      pointer-events-none absolute
+                      left-3 top-1/2
+                      -translate-y-1/2
+                      text-neutral-500
+                    "
+                  />
+
+                  <select
+                    value={guests}
+                    onChange={(event) => setGuests(Number(event.target.value))}
+                    className="
+                      h-12 w-full min-w-0
+                      appearance-none rounded-xl
+                      border border-neutral-200/70
+                      bg-neutral-50/70
+                      pl-10 pr-10
+                      text-sm text-neutral-700
+                      outline-none transition
+
+                      hover:bg-white
+                      focus:border-[#a57b52]
+                      focus:bg-white
+                    "
+                  >
+                    <option value={1}>1 persona</option>
+                    <option value={2}>2 personas</option>
+                    <option value={3}>3 personas</option>
+                    <option value={4}>4 personas</option>
+                    <option value={5}>5 personas</option>
+                  </select>
+
+                  <ChevronDown
+                    size={17}
+                    strokeWidth={1.7}
+                    className="
+                      pointer-events-none absolute
+                      right-3 top-1/2
+                      -translate-y-1/2
+                      text-neutral-500
+                    "
+                  />
+                </div>
+              </label>
+
+              {/* Botón */}
+              <button
+                type="button"
+                onClick={handleSearch}
+                disabled={!hasCompleteRange}
+                className="
+                  flex h-12 w-full items-center justify-center
+                  rounded-xl bg-[#9b6f45] px-6
+                  text-sm font-semibold text-white
+                  shadow-sm transition
+
+                  hover:bg-[#845b39]
+                  active:scale-[0.99]
+
+                  disabled:cursor-not-allowed
+                  disabled:bg-neutral-300/90
+                  disabled:text-neutral-500
+                  disabled:shadow-none
+
+                  sm:col-span-2
+
+                  lg:col-span-1
+                  lg:min-w-[210px]
+                "
+              >
+                {hasCompleteRange
+                  ? "Buscar disponibilidad"
+                  : "Elegí las fechas"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Texto del hero */}
+        <div
+          className="
+            mt-16 flex flex-1 items-start
+
+            sm:mt-20
+            md:mt-24
+            lg:mt-28
+            xl:mt-32
+          "
+        >
+          <div className="max-w-[580px]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c89a5a] sm:text-xs">
               Complejo de apartamentos
             </p>
 
             <h1
               className="
-                mt-3 max-w-[310px] font-serif text-[36px] font-medium
-                leading-[1.04] tracking-[-0.02em] text-white
+    mt-3 max-w-[320px]
+    font-serif text-[38px] font-medium
+    leading-[1.02] tracking-[-0.025em]
+    text-white
 
-                min-[380px]:max-w-[350px]
-                min-[380px]:text-[40px]
+    min-[380px]:max-w-[370px]
+    min-[380px]:text-[42px]
 
-                sm:max-w-lg sm:text-5xl
-                md:text-[52px]
-                lg:text-[58px]
-              "
+    sm:max-w-[510px]
+    sm:text-[52px]
+
+    md:text-[58px]
+    lg:text-[60px]
+    xl:text-[66px]
+  "
             >
               Tu lugar ideal
               <br />
-              en <span className="text-[#ead8c2]">Cañada de Gómez</span>
+              en <span className="text-[#d8b07a]">Cañada de Gómez</span>
             </h1>
 
             <p
               className="
-                mt-4 max-w-[310px] text-sm leading-6 text-white/90
-                min-[380px]:max-w-sm
-                sm:max-w-md sm:text-base
+                mt-4 max-w-[350px]
+                text-sm leading-6 text-white/90
+
+                sm:max-w-[470px]
+                sm:text-base sm:leading-7
               "
             >
               Apartamentos modernos y completamente equipados para que te
@@ -94,11 +278,12 @@ const HeroSection = () => {
             {/* Beneficios */}
             <div
               className="
-                mt-5 grid max-w-sm grid-cols-1 gap-2.5
+                mt-5 grid max-w-sm grid-cols-1 gap-3
                 text-xs text-white/90
 
-                sm:grid-cols-3 sm:gap-4
-                md:max-w-xl
+                sm:max-w-[550px]
+                sm:grid-cols-3
+                sm:gap-5
               "
             >
               <div className="flex items-center gap-2">
@@ -132,156 +317,6 @@ const HeroSection = () => {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Buscador */}
-      <div
-        id="reservar"
-        className="
-          relative z-20 mx-auto -mt-10 w-full max-w-[1440px]
-          px-4
-
-          sm:-mt-12 sm:px-6
-          md:px-8
-          lg:-mt-14 lg:px-12
-        "
-      >
-        <div
-          className="
-            rounded-2xl border border-neutral-200/80
-            bg-white p-4 text-neutral-900
-            shadow-[0_16px_45px_rgba(0,0,0,0.14)]
-
-            sm:p-5
-            lg:ml-auto lg:max-w-[900px]
-          "
-        >
-          <form
-            onSubmit={handleSubmit}
-            className="
-              grid grid-cols-1 gap-4
-
-              sm:grid-cols-2
-              lg:grid-cols-[1fr_1fr_0.85fr_auto]
-              lg:items-end lg:gap-3
-            "
-          >
-            <label className="block min-w-0">
-              <span className="mb-2 block text-xs font-semibold text-neutral-700">
-                Check-in
-              </span>
-
-              <div className="relative">
-                <input
-                  type="date"
-                  className="
-                    h-12 w-full min-w-0 rounded-lg
-                    border border-neutral-200 bg-white
-                    px-3 pr-10 text-sm text-neutral-700
-                    outline-none transition
-                    focus:border-neutral-500
-                  "
-                />
-
-                <CalendarDays
-                  size={17}
-                  strokeWidth={1.7}
-                  className="
-                    pointer-events-none absolute right-3 top-1/2
-                    -translate-y-1/2 text-neutral-500
-                  "
-                />
-              </div>
-            </label>
-
-            <label className="block min-w-0">
-              <span className="mb-2 block text-xs font-semibold text-neutral-700">
-                Check-out
-              </span>
-
-              <div className="relative">
-                <input
-                  type="date"
-                  className="
-                    h-12 w-full min-w-0 rounded-lg
-                    border border-neutral-200 bg-white
-                    px-3 pr-10 text-sm text-neutral-700
-                    outline-none transition
-                    focus:border-neutral-500
-                  "
-                />
-
-                <CalendarDays
-                  size={17}
-                  strokeWidth={1.7}
-                  className="
-                    pointer-events-none absolute right-3 top-1/2
-                    -translate-y-1/2 text-neutral-500
-                  "
-                />
-              </div>
-            </label>
-
-            <label className="block min-w-0">
-              <span className="mb-2 block text-xs font-semibold text-neutral-700">
-                Huéspedes
-              </span>
-
-              <div className="relative">
-                <UserRound
-                  size={17}
-                  strokeWidth={1.7}
-                  className="
-                    pointer-events-none absolute left-3 top-1/2
-                    -translate-y-1/2 text-neutral-500
-                  "
-                />
-
-                <select
-                  defaultValue="2"
-                  className="
-                    h-12 w-full min-w-0 appearance-none rounded-lg
-                    border border-neutral-200 bg-white
-                    pl-10 pr-10 text-sm text-neutral-700
-                    outline-none transition
-                    focus:border-neutral-500
-                  "
-                >
-                  <option value="1">1 persona</option>
-                  <option value="2">2 personas</option>
-                  <option value="3">3 personas</option>
-                  <option value="4">4 personas</option>
-                  <option value="5">5 personas</option>
-                </select>
-
-                <ChevronDown
-                  size={17}
-                  strokeWidth={1.7}
-                  className="
-                    pointer-events-none absolute right-3 top-1/2
-                    -translate-y-1/2 text-neutral-500
-                  "
-                />
-              </div>
-            </label>
-
-            <button
-              type="submit"
-              className="
-                flex h-12 w-full items-center justify-center
-                rounded-lg bg-neutral-950 px-5
-                text-sm font-semibold text-white
-                transition hover:bg-neutral-800
-                active:scale-[0.99]
-
-                sm:col-span-2
-                lg:col-span-1 lg:min-w-[170px]
-              "
-            >
-              Buscar disponibilidad
-            </button>
-          </form>
         </div>
       </div>
     </section>

@@ -29,3 +29,112 @@ body {
     transform: translateX(-50%);
   }
 }
+
+.booking-date-picker {
+  --rdp-accent-color: #171717;
+  --rdp-accent-background-color: #ead8c2;
+  --rdp-range_middle-background-color: #f1ebe4;
+  --rdp-range_middle-color: #171717;
+
+  width: 100%;
+  margin: 0;
+}
+
+.booking-date-picker .rdp-months {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.booking-date-picker .rdp-month {
+  width: 292px;
+  flex: 0 0 292px;
+}
+
+.booking-date-picker .rdp-month_grid {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.booking-date-picker .rdp-month_caption {
+  height: 40px;
+  justify-content: center;
+}
+
+.booking-date-picker .rdp-caption_label {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.booking-date-picker .rdp-nav {
+  top: 4px;
+}
+
+.booking-date-picker .rdp-button_previous,
+.booking-date-picker .rdp-button_next {
+  width: 32px;
+  height: 32px;
+  color: #9b6f45;
+}
+
+.booking-date-picker .rdp-weekday {
+  height: 30px;
+  color: #737373;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.booking-date-picker .rdp-day {
+  width: 38px;
+  height: 38px;
+}
+
+.booking-date-picker .rdp-day_button {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.booking-date-picker .rdp-range_start .rdp-day_button,
+.booking-date-picker .rdp-range_end .rdp-day_button {
+  border-radius: 7px;
+  background: #171717;
+  color: #fff;
+}
+
+.booking-date-picker .rdp-range_middle {
+  background: #f1ebe4;
+}
+
+.booking-date-picker .rdp-disabled {
+  color: #d4d4d4;
+  opacity: 1;
+}
+
+.booking-date-picker .rdp-today:not(.rdp-selected) .rdp-day_button {
+  border: 1px solid #a57b52;
+  border-radius: 7px;
+}
+
+@media (max-width: 1023px) {
+  .booking-date-picker .rdp-months {
+    display: block;
+  }
+
+  .booking-date-picker .rdp-month {
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+
+  .booking-date-picker .rdp-day,
+  .booking-date-picker .rdp-day_button {
+    width: 36px;
+    height: 36px;
+  }
+}
