@@ -5,10 +5,10 @@ const Apartments = () => {
   return (
     <section
       id="apartamentos"
-      className="bg-[#faf9f7] px-5 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14"
+      className="bg-[#faf9f7] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14"
     >
-      <div className="mx-auto w-full max-w-[1280px]">
-        <div className="grid gap-8 xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-10">
+      <div className="mx-auto w-full max-w-[1440px]">
+        <div className="grid gap-8 xl:grid-cols-[300px_minmax(0,1fr)] xl:gap-10">
           {/* Información */}
           <div className="max-w-md">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#a57b52]">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   CheckCircle2,
@@ -12,9 +12,11 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
+import { expireReservations } from "../../services/reservationService";
 
 type ReservationSuccessLocationState = {
   totalPrice?: number;
+  expiresAt?: Date | string | number;
 };
 
 const formatPrice = (price: number) => {
@@ -26,16 +28,62 @@ const formatPrice = (price: number) => {
   });
 };
 
+const parseExpirationDate = (value: unknown): Date | null => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsedDate = new Date(value);
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+  }
+
+  return null;
+};
+
+const formatRemainingTime = (milliseconds: number) => {
+  const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+    2,
+    "0",
+  )}`;
+};
+
 const ReservationSuccess = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
+  const [expirationProcessed, setExpirationProcessed] = useState(false);
 
   const reservationId = searchParams.get("id");
 
   const locationState =
     location.state as ReservationSuccessLocationState | null;
+
+  const expirationDate = useMemo(
+    () => parseExpirationDate(locationState?.expiresAt),
+    [locationState?.expiresAt],
+  );
+
+  const remainingMilliseconds = expirationDate
+    ? Math.max(0, expirationDate.getTime() - currentTime)
+    : null;
+
+  const isExpired =
+    remainingMilliseconds !== null && remainingMilliseconds <= 0;
+
+  const remainingTime =
+    remainingMilliseconds !== null
+      ? formatRemainingTime(remainingMilliseconds)
+      : null;
 
   const totalPrice =
     typeof locationState?.totalPrice === "number" &&
@@ -84,6 +132,33 @@ const ReservationSuccess = () => {
     }
   };
 
+  useEffect(() => {
+    if (!expirationDate || isExpired) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [expirationDate, isExpired]);
+
+  useEffect(() => {
+    if (!isExpired || expirationProcessed) {
+      return;
+    }
+
+    setExpirationProcessed(true);
+
+    expireReservations().catch((error) => {
+      console.error("No se pudo actualizar la reserva expirada:", error);
+      setExpirationProcessed(false);
+    });
+  }, [expirationProcessed, isExpired]);
+
   return (
     <div className="flex min-h-screen flex-col bg-[#f7f5f2]">
       <Navbar />
@@ -101,9 +176,45 @@ const ReservationSuccess = () => {
             </h1>
 
             <p className="mt-0.5 text-[11px] text-neutral-500">
-              Registramos correctamente tu solicitud. Para confirmar la reserva,
-              realizá la transferencia de la seña y enviá el comprobante.{" "}
+              {isExpired
+                ? "El plazo para completar el pago terminó. Las fechas quedaron disponibles nuevamente."
+                : "Registramos correctamente tu solicitud. Para confirmar la reserva, realizá la transferencia de la seña y enviá el comprobante."}
             </p>
+
+            {remainingTime && (
+              <div
+                className={`mt-4 rounded-xl border p-4 text-center ${
+                  isExpired
+                    ? "border-red-200 bg-red-50"
+                    : "border-amber-200 bg-amber-50"
+                }`}
+              >
+                <p
+                  className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
+                    isExpired ? "text-red-700" : "text-amber-800"
+                  }`}
+                >
+                  {isExpired
+                    ? "Reserva expirada"
+                    : "Tiempo restante para completar el pago"}
+                </p>
+
+                <p
+                  className={`mt-1 text-3xl font-bold tabular-nums ${
+                    isExpired ? "text-red-700" : "text-neutral-950"
+                  }`}
+                >
+                  {remainingTime}
+                </p>
+
+                {isExpired && (
+                  <p className="mt-2 text-xs text-red-700">
+                    Volvé a realizar la reserva para elegir nuevamente las
+                    fechas.
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="mt-5 rounded-xl border border-neutral-200 bg-[#faf9f7] p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
@@ -138,11 +249,19 @@ const ReservationSuccess = () => {
                   </div>
 
                   <div>
-                    <p className="text-sm font-semibold text-[#8d623c]">
-                      Esperando transferencia
+                    <p
+                      className={`text-sm font-semibold ${
+                        isExpired ? "text-red-700" : "text-[#8d623c]"
+                      }`}
+                    >
+                      {isExpired
+                        ? "Reserva expirada"
+                        : "Esperando transferencia"}
                     </p>
                     <p className="mt-0.5 text-[11px] leading-4 text-neutral-500">
-                      Transferí el 50% del total de la estadía.
+                      {isExpired
+                        ? "El tiempo disponible para realizar el pago terminó."
+                        : "Transferí el 50% del total de la estadía."}
                     </p>
                   </div>
                 </div>
@@ -217,7 +336,7 @@ const ReservationSuccess = () => {
               </div>
 
               <div>
-                <h2 className="text-sm font-semibold text-neutral-950 sm:text-base">
+                <h2 className="mt-2 text-1xl font-semibold leading-tight text-neutral-950 sm:text-[28px]">
                   Datos para realizar la transferencia
                 </h2>
 
@@ -303,26 +422,49 @@ const ReservationSuccess = () => {
               </div>
             )}
 
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-              <p className="text-[11px] leading-4 text-amber-950">
-                La reserva quedará pendiente hasta que recibamos y verifiquemos
-                el comprobante.
+            <div
+              className={`mt-4 rounded-lg border px-3 py-2.5 ${
+                isExpired
+                  ? "border-red-200 bg-red-50"
+                  : "border-amber-200 bg-amber-50"
+              }`}
+            >
+              <p
+                className={`text-[11px] leading-4 ${
+                  isExpired ? "text-red-800" : "text-amber-950"
+                }`}
+              >
+                {isExpired
+                  ? "La reserva expiró y ya no puede confirmarse. Volvé a realizar una nueva solicitud."
+                  : "La reserva quedará pendiente hasta que recibamos y verifiquemos el comprobante."}
               </p>
             </div>
 
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 text-xs font-semibold text-white transition hover:bg-[#20bd5a]"
-            >
-              <MessageCircle size={15} strokeWidth={1.8} />
-              Enviar comprobante por WhatsApp
-            </a>
+            {isExpired ? (
+              <button
+                type="button"
+                disabled
+                className="mt-4 inline-flex h-10 w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-neutral-300 px-4 text-xs font-semibold text-neutral-600"
+              >
+                <MessageCircle size={15} strokeWidth={1.8} />
+                Reserva expirada
+              </button>
+            ) : (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 text-xs font-semibold text-white transition hover:bg-[#20bd5a]"
+              >
+                <MessageCircle size={15} strokeWidth={1.8} />
+                Enviar comprobante por WhatsApp
+              </a>
+            )}
 
             <p className="mt-2 text-center text-[9px] leading-4 text-neutral-500">
-              Incluí el código de reserva en el mensaje para identificar el
-              pago.
+              {isExpired
+                ? "Para continuar, volvé al inicio y realizá una nueva reserva."
+                : "Incluí el código de reserva en el mensaje para identificar el pago."}
             </p>
           </div>
         </section>

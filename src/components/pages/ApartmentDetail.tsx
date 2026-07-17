@@ -371,7 +371,8 @@ const ApartmentDetail = () => {
 
       navigate(`/reserva-exitosa?id=${result.id}`, {
         state: {
-          totalPrice,
+          totalPrice: result.totalPrice,
+          expiresAt: result.expiresAt.toISOString(),
         },
       });
     } catch (error) {

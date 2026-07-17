@@ -53,7 +53,7 @@ const Services = () => {
             Servicios
           </p>
 
-          <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-neutral-950 sm:text-4xl lg:text-5xl">
+          <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight text-neutral-950 lg:text-3xl">
             Todo lo que necesitás para sentirte como en casa
           </h2>
 

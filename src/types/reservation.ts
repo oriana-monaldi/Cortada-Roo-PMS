@@ -1,6 +1,7 @@
 export type ReservationStatus =
   | "pending"
   | "confirmed"
+  | "expired"
   | "checked-in"
   | "checked-out"
   | "cancelled";
@@ -14,6 +15,7 @@ export type Reservation = {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+
   estimatedCheckInTime: string;
   observations: string;
 
@@ -30,6 +32,12 @@ export type Reservation = {
 
   createdAt: Date;
   updatedAt: Date;
+
+  // Momento hasta el cual la reserva bloquea las fechas.
+  expiresAt: Date;
+
+  // Se completa cuando el administrador confirma el pago.
+  confirmedAt: Date | null;
 };
 
 export type CreateReservationInput = {
@@ -39,6 +47,7 @@ export type CreateReservationInput = {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+
   estimatedCheckInTime: string;
   observations: string;
 

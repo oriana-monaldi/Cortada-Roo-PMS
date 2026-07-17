@@ -34,6 +34,7 @@ const statusOptions: Array<{
   { value: "all", label: "Todas" },
   { value: "pending", label: "Pendientes" },
   { value: "confirmed", label: "Confirmadas" },
+  { value: "expired", label: "Expiradas" },
   { value: "checked-in", label: "Con check-in" },
   { value: "checked-out", label: "Finalizadas" },
   { value: "cancelled", label: "Canceladas" },
@@ -42,6 +43,7 @@ const statusOptions: Array<{
 const statusLabels: Record<ReservationStatus, string> = {
   pending: "Pendiente",
   confirmed: "Confirmada",
+  expired: "Expirada",
   "checked-in": "Check-in realizado",
   "checked-out": "Finalizada",
   cancelled: "Cancelada",
@@ -50,6 +52,7 @@ const statusLabels: Record<ReservationStatus, string> = {
 const statusStyles: Record<ReservationStatus, string> = {
   pending: "border-amber-200 bg-amber-50 text-amber-700",
   confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  expired: "border-red-200 bg-red-50 text-red-700",
   "checked-in": "border-blue-200 bg-blue-50 text-blue-700",
   "checked-out": "border-neutral-200 bg-neutral-100 text-neutral-600",
   cancelled: "border-red-200 bg-red-50 text-red-700",
@@ -75,6 +78,30 @@ const formatDateTime = (date: Date) => {
 
 const formatPrice = (price: number) => {
   return price.toLocaleString("es-AR");
+};
+
+const getExpirationText = (reservation: Reservation) => {
+  if (reservation.status === "expired") {
+    return "El plazo de pago venció";
+  }
+
+  if (reservation.status !== "pending") {
+    return null;
+  }
+
+  const remainingMilliseconds = reservation.expiresAt.getTime() - Date.now();
+
+  if (remainingMilliseconds <= 0) {
+    return "Pendiente de actualización: el plazo ya venció";
+  }
+
+  const totalMinutes = Math.ceil(remainingMilliseconds / 60_000);
+
+  if (totalMinutes < 60) {
+    return `Vence en ${totalMinutes} min`;
+  }
+
+  return `Vence el ${formatDateTime(reservation.expiresAt)}`;
 };
 
 const Reservations = () => {
@@ -115,6 +142,16 @@ const Reservations = () => {
 
   useEffect(() => {
     void loadReservations();
+  }, [loadReservations]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      void loadReservations(true);
+    }, 30_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [loadReservations]);
 
   const filteredReservations = useMemo(() => {
@@ -169,8 +206,8 @@ const Reservations = () => {
             Reservas
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-neutral-600">
-            Administrá solicitudes, confirmaciones, ingresos y salidas de los
-            huéspedes.
+            Administrá solicitudes, pagos, vencimientos, ingresos y salidas de
+            los huéspedes.
           </p>
         </div>
 
@@ -281,6 +318,7 @@ const Reservations = () => {
         <div className="mt-6 space-y-4">
           {filteredReservations.map((reservation) => {
             const isUpdating = updatingId === reservation.id;
+            const expirationText = getExpirationText(reservation);
 
             return (
               <article
@@ -303,6 +341,19 @@ const Reservations = () => {
                       <p className="mt-2 text-xs text-neutral-400">
                         Código: {reservation.id}
                       </p>
+
+                      {expirationText && (
+                        <p
+                          className={`mt-2 text-xs font-semibold ${
+                            reservation.status === "expired" ||
+                            reservation.expiresAt.getTime() <= Date.now()
+                              ? "text-red-700"
+                              : "text-amber-700"
+                          }`}
+                        >
+                          {expirationText}
+                        </p>
+                      )}
                     </div>
 
                     <div className="text-left lg:text-right">
@@ -428,7 +479,7 @@ const Reservations = () => {
                           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Check size={16} strokeWidth={2} />
-                          Confirmar
+                          Confirmar pago
                         </button>
                         <button
                           type="button"
@@ -475,6 +526,13 @@ const Reservations = () => {
                           Cancelar reserva
                         </button>
                       </>
+                    )}
+
+                    {reservation.status === "expired" && (
+                      <span className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-50 px-4 text-xs font-semibold text-red-700">
+                        <Clock3 size={16} strokeWidth={1.8} />
+                        Reserva expirada
+                      </span>
                     )}
 
                     {reservation.status === "checked-in" && (

@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -17,6 +18,13 @@ const COLLECTION_NAME = "reservations";
 const reservationsCollection = collection(db, COLLECTION_NAME);
 
 const DAY_IN_MILLISECONDS = 86_400_000;
+
+// 1 minuto para realizar las pruebas.
+// Cuando confirmemos que todo funciona, cambialo a 10.
+export const RESERVATION_TIMEOUT_MINUTES = 1;
+
+const RESERVATION_TIMEOUT_MILLISECONDS =
+  RESERVATION_TIMEOUT_MINUTES * 60 * 1000;
 
 const normalizeDate = (date: Date) => {
   const normalizedDate = new Date(date);
@@ -35,6 +43,14 @@ const timestampToDate = (value: unknown): Date => {
   }
 
   throw new Error("La fecha guardada en Firestore no es válida.");
+};
+
+const optionalTimestampToDate = (value: unknown): Date | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return timestampToDate(value);
 };
 
 const calculateNights = (checkIn: Date, checkOut: Date) => {
@@ -87,6 +103,16 @@ export const getReservations = async (): Promise<Reservation[]> => {
   return snapshot.docs.map((document) => {
     const data = document.data();
 
+    /*
+     * Compatibilidad con reservas creadas antes de agregar expiresAt:
+     * si una reserva antigua no tiene vencimiento, usamos createdAt.
+     * Esto evita que la aplicación se rompa al leer documentos existentes.
+     */
+    const createdAt = timestampToDate(data.createdAt);
+    const expiresAt =
+      optionalTimestampToDate(data.expiresAt) ??
+      new Date(createdAt.getTime() + RESERVATION_TIMEOUT_MILLISECONDS);
+
     return {
       id: document.id,
 
@@ -111,10 +137,45 @@ export const getReservations = async (): Promise<Reservation[]> => {
 
       status: data.status,
 
-      createdAt: timestampToDate(data.createdAt),
+      createdAt,
       updatedAt: timestampToDate(data.updatedAt),
+
+      expiresAt,
+      confirmedAt: optionalTimestampToDate(data.confirmedAt),
     } satisfies Reservation;
   });
+};
+
+/**
+ * Marca como expiradas las reservas pendientes cuyo plazo ya terminó.
+ *
+ * Devuelve la cantidad de reservas que fueron actualizadas.
+ * Se puede ejecutar todas las veces que sea necesario.
+ */
+export const expireReservations = async (): Promise<number> => {
+  const reservations = await getReservations();
+  const now = Date.now();
+
+  const expiredReservations = reservations.filter(
+    (reservation) =>
+      reservation.status === "pending" &&
+      reservation.expiresAt.getTime() <= now,
+  );
+
+  if (expiredReservations.length === 0) {
+    return 0;
+  }
+
+  await Promise.all(
+    expiredReservations.map((reservation) =>
+      updateDoc(doc(db, COLLECTION_NAME, reservation.id), {
+        status: "expired",
+        updatedAt: serverTimestamp(),
+      }),
+    ),
+  );
+
+  return expiredReservations.length;
 };
 
 type CheckAvailabilityInput = {
@@ -134,13 +195,30 @@ export const checkAvailability = async ({
     throw new Error("La cantidad de huéspedes debe ser válida.");
   }
 
+  await expireReservations();
+
   const reservations = await getReservations();
 
-  const activeReservations = reservations.filter(
-    (reservation) =>
-      reservation.status !== "cancelled" &&
-      reservation.status !== "checked-out",
-  );
+  const now = Date.now();
+
+  const activeReservations = reservations.filter((reservation) => {
+    if (
+      reservation.status === "cancelled" ||
+      reservation.status === "expired" ||
+      reservation.status === "checked-out"
+    ) {
+      return false;
+    }
+
+    if (
+      reservation.status === "pending" &&
+      reservation.expiresAt.getTime() <= now
+    ) {
+      return false;
+    }
+
+    return true;
+  });
 
   return apartments.filter((apartment) => {
     if (apartment.capacity < guests) {
@@ -215,6 +293,8 @@ export const createReservation = async (
   const nights = calculateNights(reservation.checkIn, reservation.checkOut);
   const totalPrice = nights * reservation.pricePerNight;
 
+  const expiresAt = new Date(Date.now() + RESERVATION_TIMEOUT_MILLISECONDS);
+
   const documentReference = await addDoc(reservationsCollection, {
     apartmentId: reservation.apartmentId,
     apartmentName: reservation.apartmentName,
@@ -237,6 +317,9 @@ export const createReservation = async (
 
     status: "pending",
 
+    expiresAt: Timestamp.fromDate(expiresAt),
+    confirmedAt: null,
+
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -245,12 +328,40 @@ export const createReservation = async (
     id: documentReference.id,
     nights,
     totalPrice,
+    expiresAt,
   };
 };
 
 export const confirmReservation = async (reservationId: string) => {
-  await updateDoc(doc(db, COLLECTION_NAME, reservationId), {
+  const reservationReference = doc(db, COLLECTION_NAME, reservationId);
+  const reservationSnapshot = await getDoc(reservationReference);
+
+  if (!reservationSnapshot.exists()) {
+    throw new Error("La reserva no existe.");
+  }
+
+  const data = reservationSnapshot.data();
+  const status = data.status as Reservation["status"];
+  const expiresAt = optionalTimestampToDate(data.expiresAt);
+
+  if (status === "expired" || status === "cancelled") {
+    throw new Error("Esta reserva ya no puede ser confirmada.");
+  }
+
+  if (status === "pending" && expiresAt && expiresAt.getTime() <= Date.now()) {
+    await updateDoc(reservationReference, {
+      status: "expired",
+      updatedAt: serverTimestamp(),
+    });
+
+    throw new Error(
+      "El plazo de pago venció. La reserva fue liberada automáticamente.",
+    );
+  }
+
+  await updateDoc(reservationReference, {
     status: "confirmed",
+    confirmedAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 };
