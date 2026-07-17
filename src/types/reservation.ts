@@ -14,6 +14,8 @@ export type Reservation = {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  estimatedCheckInTime: string;
+  observations: string;
 
   guests: number;
 
@@ -37,6 +39,8 @@ export type CreateReservationInput = {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  estimatedCheckInTime: string;
+  observations: string;
 
   guests: number;
 

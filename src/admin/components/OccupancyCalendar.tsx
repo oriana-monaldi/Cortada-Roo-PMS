@@ -5,7 +5,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Reservation = {
   id: string;
@@ -22,7 +22,6 @@ type Reservation = {
   checkIn?: Date | null;
   checkOut?: Date | null;
 
-  // Compatibilidad con la versión anterior.
   from?: Date | null;
   to?: Date | null;
 };
@@ -72,18 +71,30 @@ const ROOM_INVENTORY: Record<
 const statusLabels: Record<string, string> = {
   pending: "Pendiente",
   confirmed: "Confirmada",
-  "checked-in": "Con check-in",
+  "checked-in": "Alojado",
   "checked-out": "Finalizada",
   cancelled: "Cancelada",
 };
 
 const statusClasses: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700 ring-amber-200",
-  confirmed: "bg-blue-50 text-blue-700 ring-blue-200",
-  "checked-in": "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  confirmed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  "checked-in": "bg-[#eef1f6] text-[#26354a] ring-[#d7deea]",
   "checked-out": "bg-neutral-100 text-neutral-600 ring-neutral-200",
   cancelled: "bg-red-50 text-red-700 ring-red-200",
 };
+
+const normalizeDate = (date: Date) => {
+  const normalizedDate = new Date(date);
+  normalizedDate.setHours(0, 0, 0, 0);
+
+  return normalizedDate;
+};
+
+const isSameDay = (firstDate: Date, secondDate: Date) =>
+  firstDate.getFullYear() === secondDate.getFullYear() &&
+  firstDate.getMonth() === secondDate.getMonth() &&
+  firstDate.getDate() === secondDate.getDate();
 
 const formatCompleteDate = (date: Date) =>
   new Intl.DateTimeFormat("es-AR", {
@@ -93,22 +104,22 @@ const formatCompleteDate = (date: Date) =>
     year: "numeric",
   }).format(date);
 
+const formatMobileDay = (date: Date) =>
+  new Intl.DateTimeFormat("es-AR", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+
+const formatMobileWeekday = (date: Date) =>
+  new Intl.DateTimeFormat("es-AR", {
+    weekday: "long",
+  }).format(date);
+
 const formatMonth = (date: Date) =>
   new Intl.DateTimeFormat("es-AR", {
     month: "long",
     year: "numeric",
   }).format(date);
-
-const isSameDay = (firstDate: Date, secondDate: Date) =>
-  firstDate.getFullYear() === secondDate.getFullYear() &&
-  firstDate.getMonth() === secondDate.getMonth() &&
-  firstDate.getDate() === secondDate.getDate();
-
-const normalizeDate = (date: Date) => {
-  const normalized = new Date(date);
-  normalized.setHours(0, 0, 0, 0);
-  return normalized;
-};
 
 const normalizeRoomValue = (value?: string) =>
   value
@@ -140,7 +151,6 @@ const reservationOccupiesDay = (reservation: Reservation, day: Date) => {
   const checkIn = normalizeDate(new Date(startDate));
   const checkOut = normalizeDate(new Date(endDate));
 
-  // La fecha de salida no cuenta como una noche ocupada.
   return normalizedDay >= checkIn && normalizedDay < checkOut;
 };
 
@@ -155,30 +165,30 @@ const getReservationRoomCategory = (
     .filter(Boolean)
     .map((value) => normalizeRoomValue(value));
 
-  const value = values.join(" ");
+  const combinedValue = values.join(" ");
 
   if (
-    value.includes("single") ||
-    value.includes("individual") ||
-    value.includes("1 persona") ||
-    value.includes("una persona")
+    combinedValue.includes("single") ||
+    combinedValue.includes("individual") ||
+    combinedValue.includes("1 persona") ||
+    combinedValue.includes("una persona")
   ) {
     return "single";
   }
 
   if (
-    value.includes("double") ||
-    value.includes("doble") ||
-    value.includes("2 personas") ||
-    value.includes("dos personas")
+    combinedValue.includes("double") ||
+    combinedValue.includes("doble") ||
+    combinedValue.includes("2 personas") ||
+    combinedValue.includes("dos personas")
   ) {
     return "double";
   }
 
   if (
-    value.includes("triple") ||
-    value.includes("3 personas") ||
-    value.includes("tres personas")
+    combinedValue.includes("triple") ||
+    combinedValue.includes("3 personas") ||
+    combinedValue.includes("tres personas")
   ) {
     return "triple";
   }
@@ -232,6 +242,7 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
       background: "bg-white",
       bar: "bg-neutral-300",
       text: "text-neutral-500",
+      dot: "bg-neutral-300",
     };
   }
 
@@ -239,9 +250,10 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
     return {
       label: "Ocupación baja",
       border: "border-emerald-200",
-      background: "bg-emerald-50/50",
+      background: "bg-emerald-50/60",
       bar: "bg-emerald-400",
       text: "text-emerald-700",
+      dot: "bg-emerald-400",
     };
   }
 
@@ -252,6 +264,7 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
       background: "bg-amber-50/60",
       bar: "bg-amber-400",
       text: "text-amber-700",
+      dot: "bg-amber-400",
     };
   }
 
@@ -262,6 +275,7 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
       background: "bg-orange-50/60",
       bar: "bg-orange-400",
       text: "text-orange-700",
+      dot: "bg-orange-400",
     };
   }
 
@@ -271,34 +285,32 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
     background: "bg-red-50/60",
     bar: "bg-red-400",
     text: "text-red-700",
+    dot: "bg-red-400",
   };
 };
 
-const getAvailabilityStyle = (available: number, total: number) => {
+const getAvailabilityTextClass = (available: number) => {
   if (available === 0) {
-    return {
-      container: "border-red-200 bg-red-50",
-      number: "text-red-700",
-      badge: "bg-red-100 text-red-700",
-      label: "Sin disponibilidad",
-    };
+    return "text-red-700";
   }
 
-  if (available === 1 && total > 1) {
-    return {
-      container: "border-amber-200 bg-amber-50",
-      number: "text-amber-700",
-      badge: "bg-amber-100 text-amber-700",
-      label: "Última disponible",
-    };
+  if (available === 1) {
+    return "text-amber-700";
   }
 
-  return {
-    container: "border-emerald-200 bg-emerald-50",
-    number: "text-emerald-700",
-    badge: "bg-emerald-100 text-emerald-700",
-    label: "Disponible",
-  };
+  return "text-emerald-700";
+};
+
+const getAvailabilityBadgeClasses = (available: number) => {
+  if (available === 0) {
+    return "bg-red-50 text-red-700";
+  }
+
+  if (available === 1) {
+    return "bg-amber-50 text-amber-700";
+  }
+
+  return "bg-emerald-50 text-emerald-700";
 };
 
 const OccupancyCalendar = ({
@@ -311,16 +323,42 @@ const OccupancyCalendar = ({
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
+  useEffect(() => {
+    if (!selectedDate) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedDate(null);
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
   const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
 
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
 
-    // JavaScript comienza la semana el domingo.
-    // Esto lo transforma para comenzar el lunes.
-    const leadingEmptyDays = (firstDayOfMonth.getDay() + 6) % 7;
+    const leadingEmptyDays = (firstDay.getDay() + 6) % 7;
 
     const days: Array<Date | null> = [];
 
@@ -328,7 +366,7 @@ const OccupancyCalendar = ({
       days.push(null);
     }
 
-    for (let day = 1; day <= lastDayOfMonth.getDate(); day += 1) {
+    for (let day = 1; day <= lastDay.getDate(); day += 1) {
       days.push(new Date(year, month, day));
     }
 
@@ -372,6 +410,10 @@ const OccupancyCalendar = ({
     totalRooms,
   );
 
+  const availabilityEntries = Object.entries(selectedAvailability) as Array<
+    [RoomCategory, RoomAvailability]
+  >;
+
   const goToPreviousMonth = () => {
     setCurrentMonth(
       (previousMonth) =>
@@ -392,184 +434,185 @@ const OccupancyCalendar = ({
 
   return (
     <>
-      <section className="rounded-3xl border border-[#e7e1da] bg-[#fffdfb] p-4 shadow-[0_14px_40px_rgba(32,28,24,0.05)] sm:p-6">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b67b45]">
+      <section className="w-full min-w-0 rounded-2xl border border-[#e7e1da] bg-[#fffdfb] p-3 shadow-[0_10px_30px_rgba(32,28,24,0.04)] lg:p-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b67b45]">
               Disponibilidad mensual
             </p>
 
-            <h2 className="mt-2 font-serif text-2xl font-semibold text-[#172033]">
+            <h2 className="mt-1 font-serif text-lg font-semibold text-[#172033] lg:text-xl">
               Calendario de habitaciones
             </h2>
 
-            <p className="mt-1 text-sm text-neutral-500">
-              Tocá un día para consultar habitaciones individuales, dobles y
-              triples.
+            <p className="mt-0.5 hidden text-xs text-neutral-500 lg:block">
+              Seleccioná un día para consultar la disponibilidad y las reservas.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
             <button
               type="button"
               onClick={goToPreviousMonth}
-              className="rounded-xl border border-[#e3ddd6] bg-white p-2.5 text-[#273246] transition hover:border-[#b67b45] hover:text-[#9a6235]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e3ddd6] bg-white text-[#273246] transition hover:border-[#b67b45] hover:text-[#9a6235]"
               aria-label="Mes anterior"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
 
-            <p className="min-w-40 text-center text-sm font-semibold capitalize text-[#172033]">
+            <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold capitalize text-[#172033] sm:min-w-36 sm:flex-none">
               {formatMonth(currentMonth)}
             </p>
 
             <button
               type="button"
               onClick={goToNextMonth}
-              className="rounded-xl border border-[#e3ddd6] bg-white p-2.5 text-[#273246] transition hover:border-[#b67b45] hover:text-[#9a6235]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e3ddd6] bg-white text-[#273246] transition hover:border-[#b67b45] hover:text-[#9a6235]"
               aria-label="Mes siguiente"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto pb-2">
-          <div className="min-w-[720px]">
-            <div className="mb-3 grid grid-cols-7 gap-2">
-              {DAYS.map((day) => (
-                <div
-                  key={day}
-                  className="py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-neutral-500"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
+        <div className="w-full min-w-0">
+          <div className="mb-1.5 grid grid-cols-7 gap-1">
+            {DAYS.map((day) => (
+              <div
+                key={day}
+                className="truncate py-1 text-center text-[9px] font-semibold uppercase tracking-wide text-neutral-400 sm:text-[10px]"
+              >
+                {day}
+              </div>
+            ))}
+          </div>
 
-            <div className="grid grid-cols-7 gap-2">
-              {calendarDays.map((day, index) => {
-                if (!day) {
-                  return (
-                    <div
-                      key={`empty-${index}`}
-                      className="min-h-28 rounded-2xl bg-[#f8f6f3]"
-                    />
-                  );
-                }
-
-                const dayReservations = reservations.filter((reservation) =>
-                  reservationOccupiesDay(reservation, day),
-                );
-
-                const occupiedRooms = Math.min(
-                  dayReservations.length,
-                  totalRooms,
-                );
-
-                const availableRooms = Math.max(totalRooms - occupiedRooms, 0);
-
-                const percentage =
-                  totalRooms > 0
-                    ? Math.round((occupiedRooms / totalRooms) * 100)
-                    : 0;
-
-                const occupancyStyle = getOccupancyStyle(
-                  occupiedRooms,
-                  totalRooms,
-                );
-
-                const isToday = isSameDay(day, new Date());
-
-                const isSelected =
-                  selectedDate !== null && isSameDay(day, selectedDate);
-
+          <div className="grid min-w-0 grid-cols-7 gap-1 sm:gap-1.5">
+            {calendarDays.map((day, index) => {
+              if (!day) {
                 return (
-                  <button
-                    key={day.toISOString()}
-                    type="button"
-                    onClick={() => setSelectedDate(day)}
-                    aria-label={`Ver disponibilidad del ${formatCompleteDate(
-                      day,
-                    )}`}
-                    className={`min-h-28 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:border-[#b67b45] hover:shadow-md ${
-                      occupancyStyle.border
-                    } ${occupancyStyle.background} ${
-                      isSelected ? "ring-2 ring-[#b67b45]/25" : ""
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span
-                        className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
-                          isToday ? "bg-[#172033] text-white" : "text-[#172033]"
-                        }`}
-                      >
-                        {day.getDate()}
-                      </span>
-
-                      <span
-                        className={`text-[10px] font-semibold ${occupancyStyle.text}`}
-                      >
-                        {availableRooms} libres
-                      </span>
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="flex items-end justify-between gap-2">
-                        <p className="text-sm font-semibold text-[#172033]">
-                          {occupiedRooms}/{totalRooms}
-                        </p>
-
-                        <span className="text-[10px] font-medium text-neutral-500">
-                          ocupadas
-                        </span>
-                      </div>
-
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/80">
-                        <div
-                          className={`h-full rounded-full transition-all ${occupancyStyle.bar}`}
-                          style={{
-                            width: `${Math.min(percentage, 100)}%`,
-                          }}
-                        />
-                      </div>
-
-                      <p
-                        className={`mt-2 text-[10px] font-medium ${occupancyStyle.text}`}
-                      >
-                        {occupancyStyle.label}
-                      </p>
-                    </div>
-                  </button>
+                  <div
+                    key={`empty-${index}`}
+                    className="min-h-14 rounded-md bg-[#f8f6f3] sm:min-h-16 sm:rounded-lg lg:min-h-20"
+                  />
                 );
-              })}
-            </div>
+              }
+
+              const dayReservations = reservations.filter((reservation) =>
+                reservationOccupiesDay(reservation, day),
+              );
+
+              const occupiedRooms = Math.min(
+                dayReservations.length,
+                totalRooms,
+              );
+
+              const availableRooms = Math.max(totalRooms - occupiedRooms, 0);
+
+              const percentage =
+                totalRooms > 0
+                  ? Math.round((occupiedRooms / totalRooms) * 100)
+                  : 0;
+
+              const occupancyStyle = getOccupancyStyle(
+                occupiedRooms,
+                totalRooms,
+              );
+
+              const today = isSameDay(day, new Date());
+
+              const selected =
+                selectedDate !== null && isSameDay(day, selectedDate);
+
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() => setSelectedDate(day)}
+                  aria-label={`Ver disponibilidad del ${formatCompleteDate(
+                    day,
+                  )}`}
+                  className={`min-h-14 min-w-0 overflow-hidden rounded-md border p-1 text-left transition hover:border-[#b67b45] sm:min-h-16 sm:rounded-lg sm:p-1.5 lg:min-h-20 lg:p-2 ${
+                    occupancyStyle.border
+                  } ${occupancyStyle.background} ${
+                    selected ? "ring-2 ring-[#b67b45]/30" : ""
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold sm:h-6 sm:w-6 sm:text-xs ${
+                        today ? "bg-[#172033] text-white" : "text-[#172033]"
+                      }`}
+                    >
+                      {day.getDate()}
+                    </span>
+
+                    <span
+                      className={`hidden text-[9px] font-semibold xl:inline ${occupancyStyle.text}`}
+                    >
+                      {availableRooms} libres
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between xl:hidden">
+                    <span
+                      className={`h-2 w-2 rounded-full ${occupancyStyle.dot}`}
+                    />
+
+                    <span className="text-[8px] font-semibold text-neutral-500 sm:text-[9px]">
+                      {occupiedRooms}/{totalRooms}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 hidden xl:block">
+                    <div className="flex items-end justify-between gap-1">
+                      <p className="text-xs font-semibold text-[#172033]">
+                        {occupiedRooms}/{totalRooms}
+                      </p>
+
+                      <span className="text-[9px] font-medium text-neutral-500">
+                        ocupadas
+                      </span>
+                    </div>
+
+                    <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/80">
+                      <div
+                        className={`h-full rounded-full ${occupancyStyle.bar}`}
+                        style={{
+                          width: `${Math.min(percentage, 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3 border-t border-[#ece6df] pt-5 text-xs text-neutral-600">
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-neutral-300" />
-            Todo disponible
+        <div className="mt-3 hidden flex-wrap gap-x-4 gap-y-2 border-t border-[#ece6df] pt-3 text-[10px] text-neutral-600 lg:flex">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300" />
+            Libre
           </span>
 
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-emerald-400" />
-            Ocupación baja
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            Baja
           </span>
 
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-amber-400" />
-            Ocupación media
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+            Media
           </span>
 
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-orange-400" />
-            Poca disponibilidad
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-orange-400" />
+            Alta
           </span>
 
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full bg-red-400" />
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
             Completo
           </span>
         </div>
@@ -577,207 +620,235 @@ const OccupancyCalendar = ({
 
       {selectedDate && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#172033]/45 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-[#172033]/50 backdrop-blur-[2px] sm:items-center sm:p-4"
           onClick={() => setSelectedDate(null)}
         >
           <div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="availability-modal-title"
-            className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#e7e1da] bg-[#fffdfb] p-5 shadow-2xl sm:p-6"
+            aria-labelledby="availability-title"
+            className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-[28px] bg-[#fffdfb] shadow-2xl sm:max-h-[86vh] sm:max-w-3xl sm:rounded-2xl sm:border sm:border-[#e7e1da]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#b67b45]">
-                  Disponibilidad del día
-                </p>
+            <div className="shrink-0 px-4 pb-3 pt-2 sm:px-5 sm:pb-3 sm:pt-5">
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-300 sm:hidden" />
 
-                <h3
-                  id="availability-modal-title"
-                  className="mt-2 font-serif text-2xl font-semibold capitalize text-[#172033]"
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b67b45] sm:block">
+                    Disponibilidad del día
+                  </p>
+
+                  <div className="sm:hidden">
+                    <p className="font-serif text-xl font-semibold capitalize text-[#172033]">
+                      {formatMobileDay(selectedDate)}
+                    </p>
+
+                    <p className="mt-0.5 text-sm capitalize text-neutral-500">
+                      {formatMobileWeekday(selectedDate)}
+                    </p>
+                  </div>
+
+                  <h3
+                    id="availability-title"
+                    className="mt-1 hidden font-serif text-xl font-semibold capitalize text-[#172033] sm:block"
+                  >
+                    {formatCompleteDate(selectedDate)}
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(null)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#e3ddd6] bg-white text-[#273246] transition hover:bg-[#f7f3ee]"
+                  aria-label="Cerrar detalle"
                 >
-                  {formatCompleteDate(selectedDate)}
-                </h3>
-
-                <p className="mt-2 text-sm text-neutral-500">
-                  Consultá qué habitación puede recibir a 1, 2 o 3 personas.
-                </p>
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedDate(null)}
-                className="rounded-xl border border-[#e3ddd6] bg-white p-2 text-[#273246] transition hover:bg-[#f7f3ee]"
-                aria-label="Cerrar"
-              >
-                <X className="h-5 w-5" />
-              </button>
             </div>
 
-            <div className="mt-6">
-              <h4 className="font-serif text-xl font-semibold text-[#172033]">
-                ¿Hay lugar para alojarse?
-              </h4>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-5 sm:pb-5">
+              <section>
+                <h4 className="text-sm font-semibold text-[#172033] sm:font-serif sm:text-lg">
+                  Habitaciones disponibles
+                </h4>
 
-              <p className="mt-1 text-sm text-neutral-500">
-                La disponibilidad está separada según la capacidad de cada
-                habitación.
-              </p>
+                <div className="mt-3 divide-y divide-[#ece6df] rounded-xl border border-[#e7e1da] bg-white px-4 sm:hidden">
+                  {availabilityEntries.map(([category, room]) => (
+                    <div
+                      key={category}
+                      className="flex items-center justify-between gap-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#172033]">
+                          {room.title}
+                        </p>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {(
-                  Object.entries(selectedAvailability) as Array<
-                    [RoomCategory, RoomAvailability]
-                  >
-                ).map(([category, room]) => {
-                  const styles = getAvailabilityStyle(
-                    room.available,
-                    room.total,
-                  );
+                        <p className="mt-0.5 text-xs text-neutral-500">
+                          {room.description}
+                        </p>
+                      </div>
 
-                  return (
+                      <div className="shrink-0 text-right">
+                        <p
+                          className={`text-lg font-semibold ${getAvailabilityTextClass(
+                            room.available,
+                          )}`}
+                        >
+                          {room.available}
+                        </p>
+
+                        <p className="text-[10px] text-neutral-500">
+                          de {room.total} libres
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 hidden grid-cols-3 gap-3 sm:grid">
+                  {availabilityEntries.map(([category, room]) => (
                     <article
                       key={category}
-                      className={`rounded-2xl border p-4 ${styles.container}`}
+                      className="rounded-xl border border-[#e7e1da] bg-white p-3"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="font-semibold text-[#172033]">
+                          <p className="text-sm font-semibold text-[#172033]">
                             {room.title}
                           </p>
 
-                          <p className="mt-1 text-xs text-neutral-600">
+                          <p className="mt-0.5 text-[11px] text-neutral-500">
                             {room.description}
                           </p>
                         </div>
 
-                        <BedDouble className="h-5 w-5 shrink-0 text-[#b67b45]" />
+                        <BedDouble className="h-4 w-4 shrink-0 text-[#b67b45]" />
                       </div>
 
                       <p
-                        className={`mt-5 text-3xl font-semibold ${styles.number}`}
+                        className={`mt-3 text-2xl font-semibold ${getAvailabilityTextClass(
+                          room.available,
+                        )}`}
                       >
                         {room.available}
                       </p>
 
-                      <p className="mt-1 text-xs leading-5 text-neutral-600">
-                        {room.available === 1
-                          ? "habitación disponible"
-                          : "habitaciones disponibles"}{" "}
-                        de {room.total}
+                      <p className="mt-0.5 text-[11px] text-neutral-500">
+                        de {room.total} disponibles
                       </p>
 
                       <span
-                        className={`mt-4 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${styles.badge}`}
+                        className={`mt-3 inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${getAvailabilityBadgeClasses(
+                          room.available,
+                        )}`}
                       >
-                        {styles.label}
+                        {room.available === 0
+                          ? "Sin disponibilidad"
+                          : room.available === 1
+                            ? "Última disponible"
+                            : "Disponible"}
                       </span>
                     </article>
-                  );
-                })}
-              </div>
-            </div>
+                  ))}
+                </div>
+              </section>
 
-            <div className="mt-6 rounded-2xl border border-[#e7e1da] bg-white p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-[#172033]">
-                    Resumen general
-                  </p>
+              <section className="mt-4 hidden rounded-xl border border-[#e7e1da] bg-white p-3 sm:block">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-[#172033]">
+                      Ocupación general
+                    </p>
 
-                  <p className="mt-1 text-xs text-neutral-500">
-                    Total de habitaciones del alojamiento
+                    <p className="mt-0.5 text-[11px] text-neutral-500">
+                      {selectedOccupiedRooms} ocupadas ·{" "}
+                      {selectedAvailableRooms} disponibles
+                    </p>
+                  </div>
+
+                  <span
+                    className={`rounded-full bg-neutral-50 px-2.5 py-1 text-[11px] font-semibold ${selectedOccupancyStyle.text}`}
+                  >
+                    {selectedPercentage}%
+                  </span>
+                </div>
+
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                  <div
+                    className={`h-full rounded-full ${selectedOccupancyStyle.bar}`}
+                    style={{
+                      width: `${Math.min(selectedPercentage, 100)}%`,
+                    }}
+                  />
+                </div>
+              </section>
+
+              <section className="mt-5">
+                <div className="flex items-end justify-between gap-3">
+                  <h4 className="text-sm font-semibold text-[#172033] sm:font-serif sm:text-lg">
+                    Reservas del día
+                  </h4>
+
+                  <p className="text-xs text-neutral-500">
+                    {selectedReservations.length}
                   </p>
                 </div>
 
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${selectedOccupancyStyle.text} bg-neutral-50`}
-                >
-                  {selectedPercentage}% ocupado
-                </span>
-              </div>
+                <div className="mt-3 space-y-2">
+                  {selectedReservations.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[#ddd5cd] bg-white px-4 py-5 text-center">
+                      <p className="text-sm font-medium text-[#273246]">
+                        No hay reservas activas
+                      </p>
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-[#f8f6f3] p-3">
-                  <p className="text-2xl font-semibold text-[#172033]">
-                    {selectedOccupiedRooms}
-                  </p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        Todas las habitaciones están disponibles para este día.
+                      </p>
+                    </div>
+                  ) : (
+                    selectedReservations.map((reservation) => (
+                      <article
+                        key={reservation.id}
+                        className="rounded-xl border border-[#e7e1da] bg-white px-4 py-3"
+                      >
+                        <div className="flex min-w-0 items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#172033]">
+                              {reservation.guestName ||
+                                reservation.guestEmail ||
+                                "Huésped"}
+                            </p>
 
-                  <p className="mt-1 text-xs text-neutral-500">Ocupadas</p>
-                </div>
+                            <p className="mt-0.5 truncate text-xs text-neutral-500">
+                              {reservation.apartmentName ||
+                                "Habitación sin categoría"}
+                            </p>
+                          </div>
 
-                <div className="rounded-xl bg-emerald-50 p-3">
-                  <p className="text-2xl font-semibold text-emerald-700">
-                    {selectedAvailableRooms}
-                  </p>
-
-                  <p className="mt-1 text-xs text-neutral-500">Disponibles</p>
-                </div>
-              </div>
-
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-neutral-100">
-                <div
-                  className={`h-full rounded-full ${selectedOccupancyStyle.bar}`}
-                  style={{
-                    width: `${Math.min(selectedPercentage, 100)}%`,
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="mt-7">
-              <h4 className="font-serif text-xl font-semibold text-[#172033]">
-                Reservas que ocupan este día
-              </h4>
-
-              <div className="mt-4 space-y-3">
-                {selectedReservations.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-[#ddd5cd] bg-white py-10 text-center text-sm text-neutral-500">
-                    No hay reservas activas para este día. Todas las
-                    habitaciones están disponibles.
-                  </p>
-                ) : (
-                  selectedReservations.map((reservation) => (
-                    <article
-                      key={reservation.id}
-                      className="rounded-2xl border border-[#e7e1da] bg-white p-4"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-[#172033]">
-                            {reservation.guestName ||
-                              reservation.guestEmail ||
-                              "Huésped"}
-                          </p>
-
-                          <p className="mt-1 text-sm text-neutral-500">
-                            {reservation.apartmentName ||
-                              "Habitación sin categoría"}
-                          </p>
+                          <span
+                            className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-medium ring-1 ring-inset ${
+                              statusClasses[reservation.status ?? ""] ??
+                              "bg-neutral-100 text-neutral-600 ring-neutral-200"
+                            }`}
+                          >
+                            {statusLabels[reservation.status ?? ""] ??
+                              reservation.status ??
+                              "Sin estado"}
+                          </span>
                         </div>
 
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset ${
-                            statusClasses[reservation.status ?? ""] ??
-                            "bg-neutral-100 text-neutral-600 ring-neutral-200"
-                          }`}
-                        >
-                          {statusLabels[reservation.status ?? ""] ??
-                            reservation.status ??
-                            "Sin estado"}
-                        </span>
-                      </div>
-
-                      <div className="mt-4 flex items-center gap-2 text-sm text-neutral-600">
-                        <UsersRound className="h-4 w-4 text-[#b67b45]" />
-                        {reservation.guests ?? 0} huésped
-                        {reservation.guests === 1 ? "" : "es"}
-                      </div>
-                    </article>
-                  ))
-                )}
-              </div>
+                        <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500">
+                          <UsersRound className="h-3.5 w-3.5 shrink-0 text-[#b67b45]" />
+                          {reservation.guests ?? 0}{" "}
+                          {reservation.guests === 1 ? "huésped" : "huéspedes"}
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </section>
             </div>
           </div>
         </div>

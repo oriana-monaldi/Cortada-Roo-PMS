@@ -97,6 +97,9 @@ export const getReservations = async (): Promise<Reservation[]> => {
       guestEmail: data.guestEmail,
       guestPhone: data.guestPhone,
 
+      estimatedCheckInTime: data.estimatedCheckInTime ?? "",
+      observations: data.observations ?? "",
+
       guests: data.guests,
 
       checkIn: timestampToDate(data.checkIn),
@@ -169,6 +172,14 @@ export const createReservation = async (
     throw new Error("La cantidad de huéspedes debe ser válida.");
   }
 
+  if (!reservation.estimatedCheckInTime.trim()) {
+    throw new Error("Seleccioná un horario aproximado de check-in.");
+  }
+
+  if (reservation.observations.length > 300) {
+    throw new Error("Las observaciones no pueden superar los 300 caracteres.");
+  }
+
   const apartment = apartments.find(
     (item) => item.id === reservation.apartmentId,
   );
@@ -202,7 +213,6 @@ export const createReservation = async (
   }
 
   const nights = calculateNights(reservation.checkIn, reservation.checkOut);
-
   const totalPrice = nights * reservation.pricePerNight;
 
   const documentReference = await addDoc(reservationsCollection, {
@@ -212,6 +222,9 @@ export const createReservation = async (
     guestName: reservation.guestName.trim(),
     guestEmail: reservation.guestEmail.trim().toLowerCase(),
     guestPhone: reservation.guestPhone.trim(),
+
+    estimatedCheckInTime: reservation.estimatedCheckInTime.trim(),
+    observations: reservation.observations.trim(),
 
     guests: reservation.guests,
 

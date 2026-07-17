@@ -202,6 +202,45 @@ const calculateNights = (checkIn: Date, checkOut: Date) => {
   return Math.max(Math.round(difference / DAY_IN_MILLISECONDS), 0);
 };
 
+const formatGuestName = (value: string) => {
+  const sanitizedValue = value
+    .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ' -]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/^\s/, "")
+    .toLocaleLowerCase("es-AR");
+
+  return sanitizedValue.replace(
+    /(^|[\s'-])([A-Za-zÁÉÍÓÚÜÑáéíóúüñ])/g,
+    (_, separator: string, letter: string) =>
+      `${separator}${letter.toLocaleUpperCase("es-AR")}`,
+  );
+};
+
+const isValidFullName = (value: string) => {
+  const words = value.trim().split(/\s+/);
+
+  return (
+    words.length >= 2 &&
+    words.every((word) =>
+      /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ'-]*$/.test(word),
+    )
+  );
+};
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_PHONE_LENGTH = 11;
+const MIN_PHONE_LENGTH = 10;
+const MAX_OBSERVATIONS_LENGTH = 300;
+
+const CHECK_IN_TIME_OPTIONS = [
+  { value: "10:00-12:00", label: "10:00 a 12:00" },
+  { value: "12:00-14:00", label: "12:00 a 14:00" },
+  { value: "14:00-16:00", label: "14:00 a 16:00" },
+  { value: "16:00-18:00", label: "16:00 a 18:00" },
+  { value: "18:00-20:00", label: "18:00 a 20:00" },
+  { value: "20:00-22:00", label: "20:00 a 22:00" },
+];
+
 const ApartmentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -238,6 +277,8 @@ const ApartmentDetail = () => {
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [estimatedCheckInTime, setEstimatedCheckInTime] = useState("");
+  const [observations, setObservations] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -273,18 +314,38 @@ const ApartmentDetail = () => {
       return;
     }
 
-    if (!guestName.trim()) {
-      setSubmitError("Ingresá tu nombre y apellido.");
+    const normalizedGuestName = guestName.trim();
+    const normalizedGuestEmail = guestEmail.trim().toLowerCase();
+
+    if (!isValidFullName(normalizedGuestName)) {
+      setSubmitError("Ingresá un nombre y un apellido válidos.");
       return;
     }
 
-    if (!guestEmail.trim()) {
-      setSubmitError("Ingresá tu correo electrónico.");
+    if (!EMAIL_PATTERN.test(normalizedGuestEmail)) {
+      setSubmitError("Ingresá un correo electrónico válido.");
       return;
     }
 
-    if (!guestPhone.trim()) {
-      setSubmitError("Ingresá tu teléfono.");
+    if (
+      guestPhone.length < MIN_PHONE_LENGTH ||
+      guestPhone.length > MAX_PHONE_LENGTH
+    ) {
+      setSubmitError(
+        `El teléfono debe tener entre ${MIN_PHONE_LENGTH} y ${MAX_PHONE_LENGTH} números.`,
+      );
+      return;
+    }
+
+    if (!estimatedCheckInTime) {
+      setSubmitError("Indicá un horario aproximado de llegada.");
+      return;
+    }
+
+    if (observations.length > MAX_OBSERVATIONS_LENGTH) {
+      setSubmitError(
+        `Las observaciones no pueden superar los ${MAX_OBSERVATIONS_LENGTH} caracteres.`,
+      );
       return;
     }
 
@@ -292,19 +353,27 @@ const ApartmentDetail = () => {
     setSubmitError("");
 
     try {
-      const result = await createReservation({
+      const reservationData = {
         apartmentId: apartment.id,
         apartmentName: apartment.name,
-        guestName,
-        guestEmail,
+        guestName: normalizedGuestName,
+        guestEmail: normalizedGuestEmail,
         guestPhone,
         guests,
         checkIn,
         checkOut,
+        estimatedCheckInTime,
+        observations: observations.trim(),
         pricePerNight: apartment.pricePerNight,
-      });
+      };
 
-      navigate(`/reserva-exitosa?id=${result.id}`);
+      const result = await createReservation(reservationData);
+
+      navigate(`/reserva-exitosa?id=${result.id}`, {
+        state: {
+          totalPrice,
+        },
+      });
     } catch (error) {
       console.error("Error al crear la reserva:", error);
 
@@ -351,9 +420,54 @@ const ApartmentDetail = () => {
               images={apartment.images}
               apartmentName={apartment.name}
             />
+
+            {/* Descripción */}
+            <div className="mt-10">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#a57b52]">
+                Sobre la habitación
+              </p>
+
+              <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight text-neutral-950 sm:text-3xl">
+                Comodidad durante tu estadía
+              </h2>
+
+              <p className="mt-4 text-sm leading-7 text-neutral-600 sm:text-base">
+                {apartment.longDescription}
+              </p>
+            </div>
+
+            {/* Servicios */}
+            <div className="mt-8 border-t border-neutral-200 pt-8">
+              <h2 className="font-serif text-xl font-semibold text-neutral-950 sm:text-2xl">
+                Servicios incluidos
+              </h2>
+
+              <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-3">
+                {apartment.services.map((service) => {
+                  const Icon = getServiceIcon(service);
+
+                  return (
+                    <div
+                      key={service}
+                      className="flex min-w-0 items-center gap-2.5 text-xs text-neutral-700 sm:text-sm"
+                    >
+                      <Icon
+                        size={17}
+                        strokeWidth={1.7}
+                        className="shrink-0 text-[#9b6f45]"
+                      />
+
+                      <span className="leading-5">
+                        {getShortServiceName(service)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          <aside className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)] lg:mt-[31px]">
+          <aside className="self-start rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)] lg:sticky lg:top-24">
             {hasReservationData && checkIn && checkOut ? (
               <>
                 <div className="border-b border-neutral-100 pb-4">
@@ -429,13 +543,21 @@ const ApartmentDetail = () => {
                       type="text"
                       value={guestName}
                       onChange={(event) => {
-                        setGuestName(event.target.value);
+                        setGuestName(formatGuestName(event.target.value));
                         setSubmitError("");
                       }}
+                      onBlur={() => setGuestName(guestName.trim())}
                       autoComplete="name"
+                      inputMode="text"
+                      maxLength={70}
+                      required
                       className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
-                      placeholder="Ej. Juan Pérez"
+                      placeholder="Ej. Perez Carlos"
                     />
+
+                    <p className="mt-1.5 text-[10px] leading-4 text-neutral-500">
+                      Escribí el nombre completo del titular de la reserva.
+                    </p>
                   </label>
 
                   <label className="mt-3 block">
@@ -450,7 +572,11 @@ const ApartmentDetail = () => {
                         setGuestEmail(event.target.value);
                         setSubmitError("");
                       }}
+                      onBlur={() =>
+                        setGuestEmail(guestEmail.trim().toLowerCase())
+                      }
                       autoComplete="email"
+                      required
                       className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
                       placeholder="nombre@email.com"
                     />
@@ -465,13 +591,87 @@ const ApartmentDetail = () => {
                       type="tel"
                       value={guestPhone}
                       onChange={(event) => {
-                        setGuestPhone(event.target.value);
+                        const onlyNumbers = event.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, MAX_PHONE_LENGTH);
+
+                        setGuestPhone(onlyNumbers);
                         setSubmitError("");
                       }}
                       autoComplete="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      minLength={MIN_PHONE_LENGTH}
+                      maxLength={MAX_PHONE_LENGTH}
+                      required
                       className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
-                      placeholder="Ej. 3471 123456"
+                      placeholder="Ej. 3471123456"
                     />
+
+                    <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] leading-4 text-neutral-500">
+                      <span>Solo números, sin espacios ni guiones.</span>
+                      <span className="shrink-0">
+                        {guestPhone.length}/{MAX_PHONE_LENGTH}
+                      </span>
+                    </div>
+                  </label>
+
+                  <label className="mt-3 block">
+                    <span className="mb-1.5 block text-xs font-semibold text-neutral-700">
+                      Horario aproximado de check-in
+                    </span>
+
+                    <select
+                      value={estimatedCheckInTime}
+                      onChange={(event) => {
+                        setEstimatedCheckInTime(event.target.value);
+                        setSubmitError("");
+                      }}
+                      required
+                      className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
+                    >
+                      <option value="">Seleccionar franja horaria</option>
+
+                      {CHECK_IN_TIME_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    <p className="mt-1.5 text-[10px] leading-4 text-neutral-500">
+                      Es orientativo y nos ayuda a preparar tu llegada.
+                    </p>
+                  </label>
+
+                  <label className="mt-3 block">
+                    <span className="mb-1.5 block text-xs font-semibold text-neutral-700">
+                      Observaciones o pedido especial
+                      <span className="ml-1 font-normal text-neutral-400">
+                        (opcional)
+                      </span>
+                    </span>
+
+                    <textarea
+                      value={observations}
+                      onChange={(event) => {
+                        setObservations(
+                          event.target.value.slice(0, MAX_OBSERVATIONS_LENGTH),
+                        );
+                        setSubmitError("");
+                      }}
+                      rows={4}
+                      maxLength={MAX_OBSERVATIONS_LENGTH}
+                      className="w-full resize-none rounded-xl border border-neutral-200 bg-white px-3 py-3 text-sm leading-5 text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
+                      placeholder="Ej. Llegaremos tarde, necesitamos una cuna o tenemos alguna necesidad especial."
+                    />
+
+                    <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] leading-4 text-neutral-500">
+                      <span>Podés dejar un mensaje para el alojamiento.</span>
+                      <span className="shrink-0">
+                        {observations.length}/{MAX_OBSERVATIONS_LENGTH}
+                      </span>
+                    </div>
                   </label>
 
                   {submitError && (
@@ -521,54 +721,6 @@ const ApartmentDetail = () => {
               </div>
             )}
           </aside>
-        </div>
-      </section>
-
-      {/* Descripción y servicios */}
-      <section className="px-5 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14">
-        <div className="mx-auto w-full max-w-[1220px]">
-          <div className="max-w-3xl">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#a57b52]">
-              Sobre la habitación
-            </p>
-
-            <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight text-neutral-950 sm:text-3xl">
-              Comodidad durante tu estadía
-            </h2>
-
-            <p className="mt-4 text-sm leading-7 text-neutral-600 sm:text-base">
-              {apartment.longDescription}
-            </p>
-          </div>
-
-          <div className="mt-8 border-t border-neutral-200 pt-8">
-            <h2 className="font-serif text-xl font-semibold text-neutral-950 sm:text-2xl">
-              Servicios incluidos
-            </h2>
-
-            <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
-              {apartment.services.map((service) => {
-                const Icon = getServiceIcon(service);
-
-                return (
-                  <div
-                    key={service}
-                    className="flex min-w-0 items-center gap-2.5 text-xs text-neutral-700 sm:text-sm"
-                  >
-                    <Icon
-                      size={17}
-                      strokeWidth={1.7}
-                      className="shrink-0 text-[#9b6f45]"
-                    />
-
-                    <span className="leading-5">
-                      {getShortServiceName(service)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </section>
     </main>

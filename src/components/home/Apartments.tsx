@@ -5,28 +5,28 @@ const Apartments = () => {
   return (
     <section
       id="apartamentos"
-      className="bg-[#faf9f7] px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20"
+      className="bg-[#faf9f7] px-5 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14"
     >
-      <div className="mx-auto w-full max-w-[1440px]">
-        <div className="grid items-start gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-10">
+      <div className="mx-auto w-full max-w-[1280px]">
+        <div className="grid gap-8 xl:grid-cols-[260px_minmax(0,1fr)] xl:gap-10">
           {/* Información */}
-          <div className="max-w-[280px]">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a57b52] sm:text-sm">
+          <div className="max-w-md">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#a57b52]">
               Apartamentos
             </p>
 
-            <h2 className="mt-3 font-serif text-3xl font-semibold leading-tight text-neutral-950 sm:text-4xl">
+            <h2 className="mt-2 font-serif text-2xl font-semibold leading-tight text-neutral-950 lg:text-3xl">
               Elegí el espacio que mejor se adapta a vos
             </h2>
 
-            <p className="mt-4 text-sm leading-6 text-neutral-600 sm:text-base">
+            <p className="mt-3 text-sm leading-6 text-neutral-600">
               Contamos con habitaciones completamente equipadas para disfrutar
               una estadía cómoda y confortable.
             </p>
           </div>
 
           {/* Cards */}
-          <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
             {apartments.map((apartment) => (
               <ApartmentCard key={apartment.id} apartment={apartment} />
             ))}
