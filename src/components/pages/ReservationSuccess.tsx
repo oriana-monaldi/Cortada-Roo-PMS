@@ -10,11 +10,11 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
-import Footer from "../layouts/Footer";
 import Navbar from "../layouts/Navbar";
 import { expireReservations } from "../../services/reservationService";
 
 type ReservationSuccessLocationState = {
+  reservationCode?: string;
   totalPrice?: number;
   expiresAt?: Date | string | number;
 };
@@ -79,7 +79,7 @@ const ReservationSuccess = () => {
 
   const isExpired =
     remainingMilliseconds !== null && remainingMilliseconds <= 0;
-
+  const reservationCode = locationState?.reservationCode;
   const remainingTime =
     remainingMilliseconds !== null
       ? formatRemainingTime(remainingMilliseconds)
@@ -133,6 +133,14 @@ const ReservationSuccess = () => {
   };
 
   useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: "auto",
+    });
+  }, []);
+
+  useEffect(() => {
     if (!expirationDate || isExpired) {
       return;
     }
@@ -160,10 +168,10 @@ const ReservationSuccess = () => {
   }, [expirationProcessed, isExpired]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f7f5f2]">
+    <div className="min-h-[100svh] overflow-x-hidden bg-[#f7f5f2]">
       <Navbar />
 
-      <main className="flex flex-1 items-start px-4 pb-10 pt-24 sm:px-6 sm:pt-28 lg:pb-14">
+      <main className="px-4 pb-8 pt-24 sm:px-6 lg:pb-10">
         <section className="mx-auto grid w-full max-w-[1020px] overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_14px_42px_rgba(0,0,0,0.07)] lg:grid-cols-2">
           {/* Columna izquierda: estado */}
           <div className="border-b border-neutral-200 p-5 sm:p-6 lg:border-b-0 lg:border-r">
@@ -171,7 +179,7 @@ const ReservationSuccess = () => {
               Solicitud recibida
             </p>
 
-            <h1 className="mt-2 text-1xl font-semibold leading-tight text-neutral-950 sm:text-[28px]">
+            <h1 className="mt-2 text-xl font-semibold leading-tight text-neutral-950 sm:text-[28px]">
               Tu solicitud fue enviada
             </h1>
 
@@ -307,14 +315,14 @@ const ReservationSuccess = () => {
               </div>
             </div>
 
-            {reservationId && (
+            {reservationCode && (
               <div className="mt-5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
                   Código de reserva
                 </p>
 
-                <p className="mt-1.5 break-all text-sm font-semibold text-neutral-950">
-                  {reservationId}
+                <p className="mt-1.5 text-xl font-bold tracking-[0.18em] text-neutral-950">
+                  {reservationCode}
                 </p>
               </div>
             )}
@@ -336,7 +344,7 @@ const ReservationSuccess = () => {
               </div>
 
               <div>
-                <h2 className="mt-2 text-1xl font-semibold leading-tight text-neutral-950 sm:text-[28px]">
+                <h2 className="mt-2 text-xl font-semibold leading-tight text-neutral-950 sm:text-[28px]">
                   Datos para realizar la transferencia
                 </h2>
 
@@ -469,8 +477,6 @@ const ReservationSuccess = () => {
           </div>
         </section>
       </main>
-
-      <Footer />
     </div>
   );
 };

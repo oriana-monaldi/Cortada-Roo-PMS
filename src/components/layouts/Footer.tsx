@@ -128,18 +128,20 @@ const Footer = () => {
                 rel="noreferrer"
                 aria-label="Instagram"
                 className="
-    flex h-10 w-10 items-center justify-center
-    rounded-full border border-neutral-700
-    text-neutral-300 transition
-    hover:border-[#d7b58d]
-    hover:text-[#d7b58d]
-  "
+                  flex h-10 w-10 items-center justify-center
+                  rounded-full border border-neutral-700
+                  text-neutral-300 transition
+                  hover:border-[#d7b58d]
+                  hover:text-[#d7b58d]
+                "
               >
                 <FaInstagram size={16} />
               </a>
 
               <a
                 href="https://www.facebook.com/profile.php?id=61591440187272&mibextid=wwXIfr&rdid=vLi4QwNaHWUm1OaF&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F18sL3JhyGq%2F%3Fmibextid%3DwwXIfr#"
+                target="_blank"
+                rel="noreferrer"
                 aria-label="Facebook"
                 className="
                   flex h-10 w-10 items-center justify-center
@@ -153,7 +155,7 @@ const Footer = () => {
               </a>
 
               <a
-                href="https://wa.link/fdbd7m"
+                href={whatsappUrl}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="WhatsApp"

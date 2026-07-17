@@ -1,6 +1,5 @@
 import img1 from "../../assets/img1.jpeg";
 import img2 from "../../assets/img2.jpeg";
-import img3 from "../../assets/img3.jpeg";
 import img4 from "../../assets/img4.jpeg";
 import img5 from "../../assets/img5.jpeg";
 import img6 from "../../assets/img6.jpeg";
@@ -11,25 +10,30 @@ import img11 from "../../assets/img11.jpeg";
 import img12 from "../../assets/img12.jpeg";
 import img13 from "../../assets/img13.jpeg";
 import img14 from "../../assets/img14.jpeg";
-import img15 from "../../assets/img15.jpeg";
 import img17 from "../../assets/img17.jpeg";
+import im24 from "../../assets/im24.png";
+import img23 from "../../assets/img23.png";
+import img18 from "../../assets/img18.png";
+import img20 from "../../assets/img20.png";
 
 const galleryImages = [
   { src: img1, alt: "Apartamento Cortada Roo" },
-  { src: img2, alt: "Apartamento Cortada Roo" },
-  { src: img3, alt: "Apartamento Cortada Roo" },
+  { src: img18, alt: "Apartamento Cortada Roo" },
+  { src: img20, alt: "Apartamento Cortada Roo" },
+  { src: img7, alt: "Apartamento Cortada Roo" },
   { src: img4, alt: "Apartamento Cortada Roo" },
   { src: img5, alt: "Apartamento Cortada Roo" },
+  { src: img2, alt: "Apartamento Cortada Roo" },
   { src: img6, alt: "Apartamento Cortada Roo" },
-  { src: img7, alt: "Apartamento Cortada Roo" },
   { src: img9, alt: "Apartamento Cortada Roo" },
   { src: img10, alt: "Apartamento Cortada Roo" },
   { src: img11, alt: "Apartamento Cortada Roo" },
   { src: img12, alt: "Apartamento Cortada Roo" },
   { src: img13, alt: "Apartamento Cortada Roo" },
   { src: img14, alt: "Apartamento Cortada Roo" },
-  { src: img15, alt: "Apartamento Cortada Roo" },
   { src: img17, alt: "Apartamento Cortada Roo" },
+  { src: im24, alt: "Apartamento Cortada Roo" },
+  { src: img23, alt: "Apartamento Cortada Roo" },
 ];
 
 const Gallery = () => {

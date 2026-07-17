@@ -4,9 +4,13 @@ import {
   BedDouble,
   CalendarDays,
   Camera,
+  CarFront,
+  Clock3,
+  Coffee,
   Dumbbell,
   KeyRound,
   MapPin,
+  PawPrint,
   Shirt,
   ShieldCheck,
   Snowflake,
@@ -241,6 +245,100 @@ const CHECK_IN_TIME_OPTIONS = [
   { value: "20:00-22:00", label: "20:00 a 22:00" },
 ];
 
+const ReservationInformation = () => {
+  return (
+    <div className="mt-5 rounded-xl border border-[#e4d4bf] bg-[#fcf8f3] p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#a57b52]">
+        Información importante
+      </p>
+
+      <div className="mt-3 divide-y divide-[#eadfce]">
+        <div className="flex items-start gap-3 pb-3">
+          <Clock3
+            size={17}
+            strokeWidth={1.7}
+            className="mt-0.5 shrink-0 text-[#9b6f45]"
+          />
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-neutral-900">Check-in</p>
+
+            <p className="mt-0.5 text-xs leading-5 text-neutral-600">
+              A partir de las 10:00 hs.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 py-3">
+          <Clock3
+            size={17}
+            strokeWidth={1.7}
+            className="mt-0.5 shrink-0 text-[#9b6f45]"
+          />
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-neutral-900">Check-out</p>
+
+            <p className="mt-0.5 text-xs leading-5 text-neutral-600">
+              Hasta las 09:00 hs.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 py-3">
+          <Coffee
+            size={17}
+            strokeWidth={1.7}
+            className="mt-0.5 shrink-0 text-[#9b6f45]"
+          />
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-neutral-900">Desayuno</p>
+
+            <p className="mt-0.5 text-xs leading-5 text-neutral-600">
+              La estadía no incluye desayuno.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 py-3">
+          <CarFront
+            size={17}
+            strokeWidth={1.7}
+            className="mt-0.5 shrink-0 text-[#9b6f45]"
+          />
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-neutral-900">
+              Estacionamiento
+            </p>
+
+            <p className="mt-0.5 text-xs leading-5 text-neutral-600">
+              Hay estacionamiento de pago fuera del establecimiento.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-3 pt-3">
+          <PawPrint
+            size={17}
+            strokeWidth={1.7}
+            className="mt-0.5 shrink-0 text-[#9b6f45]"
+          />
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-neutral-900">Mascotas</p>
+
+            <p className="mt-0.5 text-xs leading-5 text-neutral-600">
+              No se admiten mascotas.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ApartmentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -282,6 +380,7 @@ const ApartmentDetail = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
   if (!apartment) {
     return (
       <section className="min-h-screen bg-[#faf9f7] px-5 pb-12 pt-28 sm:px-8 lg:px-12">
@@ -368,9 +467,9 @@ const ApartmentDetail = () => {
       };
 
       const result = await createReservation(reservationData);
-
       navigate(`/reserva-exitosa?id=${result.id}`, {
         state: {
+          reservationCode: result.reservationCode,
           totalPrice: result.totalPrice,
           expiresAt: result.expiresAt.toISOString(),
         },
@@ -386,6 +485,18 @@ const ApartmentDetail = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleGoToAvailability = () => {
+    navigate("/");
+
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "smooth",
+      });
+    }, 100);
   };
 
   return (
@@ -466,9 +577,12 @@ const ApartmentDetail = () => {
                 })}
               </div>
             </div>
+
+            <ReservationInformation />
           </div>
 
-          <aside className="self-start rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)] lg:sticky lg:top-24">
+          <aside className="mt-8 self-start rounded-2xl border border-neutral-200 bg-white p-5 shadow-[0_10px_26px_rgba(0,0,0,0.06)]">
+            {" "}
             {hasReservationData && checkIn && checkOut ? (
               <>
                 <div className="border-b border-neutral-100 pb-4">
@@ -553,7 +667,7 @@ const ApartmentDetail = () => {
                       maxLength={70}
                       required
                       className="h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-800 outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#d7b58d]/30"
-                      placeholder="Ej. Perez Carlos"
+                      placeholder="Ej. Pérez Carlos"
                     />
 
                     <p className="mt-1.5 text-[10px] leading-4 text-neutral-500">
@@ -611,6 +725,7 @@ const ApartmentDetail = () => {
 
                     <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] leading-4 text-neutral-500">
                       <span>Solo números, sin espacios ni guiones.</span>
+
                       <span className="shrink-0">
                         {guestPhone.length}/{MAX_PHONE_LENGTH}
                       </span>
@@ -641,7 +756,7 @@ const ApartmentDetail = () => {
                     </select>
 
                     <p className="mt-1.5 text-[10px] leading-4 text-neutral-500">
-                      Es orientativo y nos ayuda a preparar tu llegada.
+                      El check-in está disponible a partir de las 10:00 hs.
                     </p>
                   </label>
 
@@ -669,6 +784,7 @@ const ApartmentDetail = () => {
 
                     <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px] leading-4 text-neutral-500">
                       <span>Podés dejar un mensaje para el alojamiento.</span>
+
                       <span className="shrink-0">
                         {observations.length}/{MAX_OBSERVATIONS_LENGTH}
                       </span>
@@ -713,12 +829,14 @@ const ApartmentDetail = () => {
                   principal para reservar esta habitación.
                 </p>
 
-                <Link
-                  to="/#reservar"
+                <ReservationInformation />
+                <button
+                  type="button"
+                  onClick={handleGoToAvailability}
                   className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl bg-neutral-950 px-5 text-sm font-semibold text-white transition hover:bg-neutral-800"
                 >
                   Consultar disponibilidad
-                </Link>
+                </button>
               </div>
             )}
           </aside>

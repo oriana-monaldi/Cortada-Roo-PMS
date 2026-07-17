@@ -19,9 +19,15 @@ const reservationsCollection = collection(db, COLLECTION_NAME);
 
 const DAY_IN_MILLISECONDS = 86_400_000;
 
-// 1 minuto para realizar las pruebas.
-// Cuando confirmemos que todo funciona, cambialo a 10.
-export const RESERVATION_TIMEOUT_MINUTES = 1;
+const generateReservationCode = () => {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  return Array.from({ length: 6 }, () =>
+    letters.charAt(Math.floor(Math.random() * letters.length)),
+  ).join("");
+};
+
+export const RESERVATION_TIMEOUT_MINUTES = 10;
 
 const RESERVATION_TIMEOUT_MILLISECONDS =
   RESERVATION_TIMEOUT_MINUTES * 60 * 1000;
@@ -115,6 +121,7 @@ export const getReservations = async (): Promise<Reservation[]> => {
 
     return {
       id: document.id,
+      reservationCode: data.reservationCode ?? document.id,
 
       apartmentId: data.apartmentId,
       apartmentName: data.apartmentName,
@@ -294,7 +301,7 @@ export const createReservation = async (
   const totalPrice = nights * reservation.pricePerNight;
 
   const expiresAt = new Date(Date.now() + RESERVATION_TIMEOUT_MILLISECONDS);
-
+  const reservationCode = generateReservationCode();
   const documentReference = await addDoc(reservationsCollection, {
     apartmentId: reservation.apartmentId,
     apartmentName: reservation.apartmentName,
@@ -316,6 +323,7 @@ export const createReservation = async (
     totalPrice,
 
     status: "pending",
+    reservationCode,
 
     expiresAt: Timestamp.fromDate(expiresAt),
     confirmedAt: null,
@@ -326,6 +334,7 @@ export const createReservation = async (
 
   return {
     id: documentReference.id,
+    reservationCode,
     nights,
     totalPrice,
     expiresAt,
@@ -344,18 +353,98 @@ export const confirmReservation = async (reservationId: string) => {
   const status = data.status as Reservation["status"];
   const expiresAt = optionalTimestampToDate(data.expiresAt);
 
-  if (status === "expired" || status === "cancelled") {
-    throw new Error("Esta reserva ya no puede ser confirmada.");
+  if (status !== "pending") {
+    throw new Error("Sólo se pueden confirmar reservas pendientes.");
   }
 
-  if (status === "pending" && expiresAt && expiresAt.getTime() <= Date.now()) {
+  if (expiresAt && expiresAt.getTime() <= Date.now()) {
     await updateDoc(reservationReference, {
       status: "expired",
       updatedAt: serverTimestamp(),
     });
 
     throw new Error(
-      "El plazo de pago venció. La reserva fue liberada automáticamente.",
+      "El plazo de pago venció. Usá la opción “Confirmar igualmente” para revisar y recuperar esta reserva.",
+    );
+  }
+
+  await updateDoc(reservationReference, {
+    status: "confirmed",
+    confirmedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+};
+
+/**
+ * Recupera una reserva expirada cuando el administrador recibió el pago tarde.
+ *
+ * Antes de confirmarla, comprueba que todavía exista una unidad disponible
+ * para la misma habitación y las mismas fechas.
+ */
+export const recoverExpiredReservation = async (reservationId: string) => {
+  await expireReservations();
+
+  const reservationReference = doc(db, COLLECTION_NAME, reservationId);
+  const reservationSnapshot = await getDoc(reservationReference);
+
+  if (!reservationSnapshot.exists()) {
+    throw new Error("La reserva no existe.");
+  }
+
+  const data = reservationSnapshot.data();
+  const status = data.status as Reservation["status"];
+
+  if (status !== "expired") {
+    throw new Error("Sólo se pueden recuperar reservas expiradas.");
+  }
+
+  const apartmentId = data.apartmentId as string;
+  const checkIn = timestampToDate(data.checkIn);
+  const checkOut = timestampToDate(data.checkOut);
+
+  const apartment = apartments.find((item) => item.id === apartmentId);
+
+  if (!apartment) {
+    throw new Error("La habitación asociada a esta reserva ya no existe.");
+  }
+
+  const reservations = await getReservations();
+  const now = Date.now();
+
+  const occupiedUnits = reservations.filter((reservation) => {
+    if (
+      reservation.id === reservationId ||
+      reservation.apartmentId !== apartmentId
+    ) {
+      return false;
+    }
+
+    if (
+      reservation.status === "cancelled" ||
+      reservation.status === "expired" ||
+      reservation.status === "checked-out"
+    ) {
+      return false;
+    }
+
+    if (
+      reservation.status === "pending" &&
+      reservation.expiresAt.getTime() <= now
+    ) {
+      return false;
+    }
+
+    return rangesOverlap(
+      checkIn,
+      checkOut,
+      reservation.checkIn,
+      reservation.checkOut,
+    );
+  }).length;
+
+  if (occupiedUnits >= apartment.totalUnits) {
+    throw new Error(
+      "No se puede recuperar esta reserva porque la habitación ya fue reservada para esas fechas.",
     );
   }
 

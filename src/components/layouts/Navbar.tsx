@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import logo from "../../assets/logo.png";
 
 const navigationItems = [
   {
@@ -93,12 +94,13 @@ const Navbar = () => {
     <header
       className={`
         fixed left-0 top-0 z-50 w-full
+        overflow-hidden
         transform transition-all duration-300 ease-in-out
         ${isNavbarVisible || isMenuOpen ? "translate-y-0" : "-translate-y-full"}
         ${
           isTransparent
             ? "bg-transparent text-white"
-            : "bg-white/95 text-neutral-900 shadow-sm backdrop-blur-md"
+            : "bg-[#8b6444]/95 text-white shadow-md backdrop-blur-md"
         }
       `}
     >
@@ -113,24 +115,19 @@ const Navbar = () => {
         <Link
           to="/"
           onClick={closeMenu}
-          className="flex shrink-0 items-center gap-3"
+          className="flex h-full shrink-0 items-center gap-3 overflow-hidden"
           aria-label="Ir al inicio"
         >
-          <div
-            className={`
-              flex h-10 w-10 items-center justify-center
-              rounded-full border text-xs font-semibold
-              transition-colors duration-300
-              sm:h-11 sm:w-11 sm:text-sm
-              ${
-                isTransparent
-                  ? "border-white/70 text-white"
-                  : "border-neutral-900 text-neutral-900"
-              }
-            `}
-          >
-            CR
-          </div>
+          <img
+            src={logo}
+            alt="Cortada Roo"
+            className="
+              h-[72px] w-auto object-contain
+              transition-all duration-300
+              sm:h-[76px]
+              lg:h-[78px]
+            "
+          />
 
           <div className="hidden sm:block">
             <p className="text-sm font-semibold uppercase tracking-[0.22em]">
@@ -141,7 +138,7 @@ const Navbar = () => {
               className={`
                 mt-0.5 text-[10px] uppercase tracking-[0.24em]
                 transition-colors duration-300
-                ${isTransparent ? "text-white/70" : "text-neutral-500"}
+                ${isTransparent ? "text-white/70" : "text-white/75"}
               `}
             >
               Apartamentos temporarios
@@ -153,34 +150,21 @@ const Navbar = () => {
           {navigationItems.map((item) => {
             const isHomeLink = item.href === "/";
 
+            const linkClasses = `
+              relative text-sm font-medium
+              transition-opacity duration-200
+              after:absolute after:-bottom-2 after:left-0
+              after:h-px after:w-0 after:bg-current
+              after:transition-all after:duration-300
+              hover:opacity-70 hover:after:w-full
+            `;
+
             return isHomeLink ? (
-              <Link
-                key={item.label}
-                to={item.href}
-                className="
-                  relative text-sm font-medium
-                  transition-opacity duration-200
-                  after:absolute after:-bottom-2 after:left-0
-                  after:h-px after:w-0 after:bg-current
-                  after:transition-all after:duration-300
-                  hover:opacity-70 hover:after:w-full
-                "
-              >
+              <Link key={item.label} to={item.href} className={linkClasses}>
                 {item.label}
               </Link>
             ) : (
-              <a
-                key={item.label}
-                href={item.href}
-                className="
-                  relative text-sm font-medium
-                  transition-opacity duration-200
-                  after:absolute after:-bottom-2 after:left-0
-                  after:h-px after:w-0 after:bg-current
-                  after:transition-all after:duration-300
-                  hover:opacity-70 hover:after:w-full
-                "
-              >
+              <a key={item.label} href={item.href} className={linkClasses}>
                 {item.label}
               </a>
             );
@@ -201,8 +185,8 @@ const Navbar = () => {
                     hover:bg-transparent hover:text-white
                   `
                   : `
-                    border-neutral-900 bg-neutral-900 text-white
-                    hover:bg-transparent hover:text-neutral-900
+                    border-white bg-white text-[#704c31]
+                    hover:bg-transparent hover:text-white
                   `
               }
             `}
@@ -221,7 +205,7 @@ const Navbar = () => {
               ${
                 isTransparent
                   ? "border-white/60 hover:bg-white/10"
-                  : "border-neutral-200 hover:bg-neutral-100"
+                  : "border-white/50 hover:bg-white/10"
               }
             `}
             aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
@@ -236,6 +220,7 @@ const Navbar = () => {
         </div>
       </nav>
 
+      {/* Menú móvil */}
       <div
         className={`
           absolute left-0 top-full w-full
@@ -257,7 +242,7 @@ const Navbar = () => {
                 border-b border-neutral-100
                 text-base font-medium
                 transition-colors duration-200
-                hover:text-neutral-500
+                hover:text-[#8b6444]
               `;
 
               if (item.href === "/") {
@@ -291,10 +276,10 @@ const Navbar = () => {
             onClick={closeMenu}
             className="
               mt-6 flex min-h-12 w-full items-center justify-center
-              rounded-full bg-neutral-900 px-6
+              rounded-full bg-[#8b6444] px-6
               text-sm font-semibold text-white
               transition-colors duration-200
-              hover:bg-neutral-700
+              hover:bg-[#704c31]
             "
           >
             Reservá ahora

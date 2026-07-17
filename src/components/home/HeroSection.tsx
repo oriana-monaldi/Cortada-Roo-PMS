@@ -164,33 +164,31 @@ const HeroSection = () => {
                   className="
                     h-[62px] w-full min-w-0
                     appearance-none rounded-xl
-                    border border-[#d8c8b7]
-                    bg-[#f3ede6]/95
+                    border border-[#d8c0a6]
+                    bg-[#f8f4ef]
                     pb-2 pl-10 pr-10 pt-6
-                    text-sm text-[#3f3730]
+                    text-sm text-[#4d3b2d]
                     outline-none transition
 
-                    hover:border-[#b99470]
-                    hover:bg-[#f8f3ed]
+                    hover:border-[#8b6444]
+                    hover:bg-[#fbf8f4]
 
-                    focus:border-[#a9794b]
-                    focus:bg-[#f8f3ed]
+                    focus:border-[#8b6444]
+                    focus:bg-[#fbf8f4]
                     focus:ring-1
-                    focus:ring-[#a9794b]/40
+                    focus:ring-[#8b6444]/30
                   "
                 >
                   <option value={1}>1 persona</option>
                   <option value={2}>2 personas</option>
                   <option value={3}>3 personas</option>
-                  <option value={4}>4 personas</option>
-                  <option value={5}>5 personas</option>
                 </select>
 
                 <span
                   className="
                     pointer-events-none absolute
                     left-3 top-2.5
-                    text-xs font-semibold text-[#5f5145]
+                    text-xs font-semibold text-[#8b6444]
                   "
                 >
                   Huéspedes
@@ -202,7 +200,7 @@ const HeroSection = () => {
                   className="
                     pointer-events-none absolute
                     bottom-[13px] left-3
-                    text-[#8b735d]
+                    text-[#8b6444]
                   "
                 />
 
@@ -212,7 +210,7 @@ const HeroSection = () => {
                   className="
                     pointer-events-none absolute
                     bottom-[13px] right-3
-                    text-[#8b735d]
+                    text-[#8b6444]
                   "
                 />
               </label>
@@ -236,8 +234,8 @@ const HeroSection = () => {
 
                   ${
                     hasCompleteRange
-                      ? "bg-[#9b6f45] text-white hover:bg-[#845b39]"
-                      : "bg-[#d8c8b7] text-[#625548] hover:bg-[#cdbba8]"
+                      ? "bg-[#8b6444] text-white hover:bg-[#704c31]"
+                      : "bg-[#d9c5b0] text-[#704c31] hover:bg-[#ccb39a]"
                   }
                 `}
               >
@@ -267,7 +265,7 @@ const HeroSection = () => {
           "
         >
           <div className="max-w-[580px]">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#c89a5a] sm:text-xs">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#d9b17a] sm:text-xs">
               Complejo de apartamentos
             </p>
 
@@ -291,7 +289,7 @@ const HeroSection = () => {
             >
               Tu lugar ideal
               <br />
-              en <span className="text-[#d8b07a]">Cañada de Gómez</span>
+              en <span className="text-[#d9b17a]">Cañada de Gómez</span>
             </h1>
 
             <p
@@ -322,7 +320,7 @@ const HeroSection = () => {
                 <ShieldCheck
                   size={19}
                   strokeWidth={1.7}
-                  className="shrink-0 text-[#ead8c2]"
+                  className="shrink-0 text-[#d9b17a]"
                 />
 
                 <span>Reserva segura</span>
@@ -332,7 +330,7 @@ const HeroSection = () => {
                 <CalendarDays
                   size={19}
                   strokeWidth={1.7}
-                  className="shrink-0 text-[#ead8c2]"
+                  className="shrink-0 text-[#d9b17a]"
                 />
 
                 <span>Reservas 24/7</span>
@@ -342,7 +340,7 @@ const HeroSection = () => {
                 <Tag
                   size={19}
                   strokeWidth={1.7}
-                  className="shrink-0 text-[#ead8c2]"
+                  className="shrink-0 text-[#d9b17a]"
                 />
 
                 <span>Mejor precio</span>

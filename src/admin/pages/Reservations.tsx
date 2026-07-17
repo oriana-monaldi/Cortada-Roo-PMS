@@ -21,6 +21,7 @@ import {
   checkInReservation,
   checkOutReservation,
   confirmReservation,
+  recoverExpiredReservation,
   getReservations,
 } from "../../services/reservationService";
 import type { Reservation, ReservationStatus } from "../../types/reservation";
@@ -529,10 +530,35 @@ const Reservations = () => {
                     )}
 
                     {reservation.status === "expired" && (
-                      <span className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-50 px-4 text-xs font-semibold text-red-700">
-                        <Clock3 size={16} strokeWidth={1.8} />
-                        Reserva expirada
-                      </span>
+                      <>
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            void updateReservationStatus(reservation.id, () =>
+                              recoverExpiredReservation(reservation.id),
+                            )
+                          }
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Check size={16} strokeWidth={2} />
+                          Confirmar igualmente
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            void updateReservationStatus(reservation.id, () =>
+                              cancelReservation(reservation.id),
+                            )
+                          }
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <X size={16} strokeWidth={2} />
+                          Cancelar
+                        </button>
+                      </>
                     )}
 
                     {reservation.status === "checked-in" && (

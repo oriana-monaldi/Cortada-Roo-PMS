@@ -9,6 +9,8 @@ export type ReservationStatus =
 export type Reservation = {
   id: string;
 
+  reservationCode: string;
+
   apartmentId: string;
   apartmentName: string;
 
@@ -33,10 +35,8 @@ export type Reservation = {
   createdAt: Date;
   updatedAt: Date;
 
-  // Momento hasta el cual la reserva bloquea las fechas.
   expiresAt: Date;
 
-  // Se completa cuando el administrador confirma el pago.
   confirmedAt: Date | null;
 };
 
