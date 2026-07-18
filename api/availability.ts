@@ -1,12 +1,20 @@
 import {cert, getApps, initializeApp} from "firebase-admin/app";
 import {getFirestore} from "firebase-admin/firestore";
 
+export const runtime = "nodejs";
+
 const getDb = () => {
   if (!getApps().length) {
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+      (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+        ? Buffer.from(
+          process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+          "base64",
+        ).toString("utf8")
+        : undefined);
 
     if (!serviceAccountJson) {
-      throw new Error("Falta FIREBASE_SERVICE_ACCOUNT_JSON en Vercel.");
+      throw new Error("Falta la credencial de Firebase en Vercel.");
     }
 
     initializeApp({credential: cert(JSON.parse(serviceAccountJson))});
@@ -45,6 +53,20 @@ const isActiveReservation = (reservation: FirebaseFirestore.DocumentData) => {
 
 const json = (body: unknown, status = 200) =>
   Response.json(body, {status});
+
+const getSafeConfigurationMessage = (error: unknown) => {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("credencial de Firebase")) {
+    return "Falta configurar la credencial de Firebase en Vercel.";
+  }
+
+  if (message.includes("JSON")) {
+    return "FIREBASE_SERVICE_ACCOUNT_JSON no contiene un JSON válido.";
+  }
+
+  return "El servidor no pudo conectar con Firebase. Revisá los logs de Vercel.";
+};
 
 export default {
   async fetch(request: Request) {
@@ -122,7 +144,7 @@ export default {
     } catch (error) {
       console.error("Error consultando disponibilidad:", error);
       return json(
-        {success: false, message: "No pudimos consultar la disponibilidad."},
+        {success: false, message: getSafeConfigurationMessage(error)},
         500,
       );
     }

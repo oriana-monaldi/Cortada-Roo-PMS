@@ -6,10 +6,16 @@ const ADMIN_EMAIL = "complejolopezsantafe@gmail.com";
 
 const getDb = () => {
   if (!getApps().length) {
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
+      (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
+        ? Buffer.from(
+          process.env.FIREBASE_SERVICE_ACCOUNT_BASE64,
+          "base64",
+        ).toString("utf8")
+        : undefined);
 
     if (!serviceAccountJson) {
-      throw new Error("Falta FIREBASE_SERVICE_ACCOUNT_JSON en Vercel.");
+      throw new Error("Falta la credencial de Firebase en Vercel.");
     }
 
     initializeApp({credential: cert(JSON.parse(serviceAccountJson))});
