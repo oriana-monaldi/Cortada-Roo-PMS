@@ -260,7 +260,7 @@ const Reservations = () => {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-4 right-4 z-50 flex w-[calc(100%-2rem)] max-w-md items-start gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl sm:bottom-6 sm:right-6"
+          className="fixed left-1/2 top-4 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl sm:left-auto sm:right-6 sm:top-6 sm:translate-x-0"
         >
           <CheckCircle2
             size={22}
