@@ -2,6 +2,8 @@ import {cert, getApps, initializeApp} from "firebase-admin/app";
 import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 
+export const runtime = "nodejs";
+
 const ADMIN_EMAIL = "complejolopezsantafe@gmail.com";
 
 const getDb = () => {
@@ -55,7 +57,9 @@ export default {
         return json({success: false, message: "No autorizado."}, 403);
       }
 
-      const reservationId = new URL(request.url).pathname.split("/").pop();
+      const url = new URL(request.url);
+      const reservationId = url.searchParams.get("reservationId") ||
+        url.pathname.split("/").pop();
 
       if (!reservationId) {
         return json({success: false, message: "Reserva inválida."}, 400);

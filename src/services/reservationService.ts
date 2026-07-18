@@ -463,7 +463,7 @@ export const confirmReservation = async (reservationId: string) => {
 
   const idToken = await currentUser.getIdToken();
   const response = await fetch(
-    `${backendBaseUrl}/send-payment-email/${reservationId}`,
+    `${backendBaseUrl}/send-payment-email?reservationId=${encodeURIComponent(reservationId)}`,
     {
       method: "POST",
       headers: {
