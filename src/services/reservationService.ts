@@ -12,6 +12,7 @@ import {
 
 import { apartments, type Apartment } from "../data/apartments";
 import { db } from "../firebase/config";
+import { auth } from "../firebase/config";
 import {
   getVacationBlockMessage,
   getVacationConflict,
@@ -26,9 +27,12 @@ import type {
 
 const COLLECTION_NAME = "reservations";
 const reservationsCollection = collection(db, COLLECTION_NAME);
-const backendBaseUrl =
-  import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ||
-  "http://localhost:3001";
+const configuredBackendUrl = import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "");
+const backendBaseUrl = import.meta.env.DEV
+  ? configuredBackendUrl || "http://localhost:3001"
+  : configuredBackendUrl?.startsWith("https://")
+    ? configuredBackendUrl
+    : "/api";
 
 const DAY_IN_MILLISECONDS = 86_400_000;
 
@@ -451,12 +455,20 @@ export const createAdminReservation = async (
 };
 
 export const confirmReservation = async (reservationId: string) => {
+  const currentUser = auth.currentUser;
+
+  if (!currentUser) {
+    throw new Error("Iniciá sesión como administrador para confirmar la reserva.");
+  }
+
+  const idToken = await currentUser.getIdToken();
   const response = await fetch(
     `${backendBaseUrl}/send-payment-email/${reservationId}`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
       },
     },
   );
