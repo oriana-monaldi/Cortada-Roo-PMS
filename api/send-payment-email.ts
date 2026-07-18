@@ -1,5 +1,4 @@
 import {cert, getApps, initializeApp} from "firebase-admin/app";
-import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 
 export const runtime = "nodejs";
@@ -44,10 +43,28 @@ const verifyAdmin = async (authorization: string | null) => {
     return false;
   }
 
-  const token = await getAuth(getFirebaseApp()).verifyIdToken(
-    authorization.slice(7),
+  const webApiKey = process.env.FIREBASE_WEB_API_KEY ||
+    process.env.VITE_FIREBASE_API_KEY || process.env.apiKey;
+
+  if (!webApiKey) {
+    throw new Error("Falta la API key de Firebase en Vercel.");
+  }
+
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${encodeURIComponent(webApiKey)}`,
+    {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({idToken: authorization.slice(7)}),
+    },
   );
-  return token.email === ADMIN_EMAIL;
+
+  if (!response.ok) {
+    return false;
+  }
+
+  const payload = await response.json() as {users?: Array<{email?: string}>};
+  return payload.users?.[0]?.email === ADMIN_EMAIL;
 };
 
 export default {
