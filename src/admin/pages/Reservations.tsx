@@ -163,6 +163,7 @@ const Reservations = () => {
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadReservations = useCallback(async (showRefreshing = false) => {
@@ -191,6 +192,13 @@ const Reservations = () => {
   useEffect(() => {
     void loadReservations();
   }, [loadReservations]);
+
+  useEffect(() => {
+    if (!successMessage) return;
+
+    const timeoutId = window.setTimeout(() => setSuccessMessage(""), 6_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [successMessage]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -225,6 +233,7 @@ const Reservations = () => {
   const updateReservationStatus = async (
     reservationId: string,
     action: () => Promise<void>,
+    confirmationMessage?: string,
   ) => {
     setUpdatingId(reservationId);
     setActionError("");
@@ -232,6 +241,7 @@ const Reservations = () => {
     try {
       await action();
       await loadReservations(true);
+      if (confirmationMessage) setSuccessMessage(confirmationMessage);
     } catch (currentError) {
       console.error("Error al actualizar reserva:", currentError);
       setActionError(
@@ -246,6 +256,35 @@ const Reservations = () => {
 
   return (
     <section>
+      {successMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 right-4 z-50 flex w-[calc(100%-2rem)] max-w-md items-start gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-2xl sm:bottom-6 sm:right-6"
+        >
+          <CheckCircle2
+            size={22}
+            strokeWidth={2}
+            className="mt-0.5 shrink-0 text-emerald-600"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-emerald-900">
+              Pago confirmado
+            </p>
+            <p className="mt-1 text-sm leading-5 text-emerald-800">
+              {successMessage}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage("")}
+            className="rounded-lg p-1 text-emerald-700 transition hover:bg-emerald-50"
+            aria-label="Cerrar mensaje"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a57b52]">
@@ -572,6 +611,7 @@ const Reservations = () => {
                             event.stopPropagation();
                             void updateReservationStatus(reservation.id, () =>
                               confirmReservation(reservation.id),
+                              "El pago se confirmó y el correo fue enviado al huésped.",
                             );
                           }}
                           className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
