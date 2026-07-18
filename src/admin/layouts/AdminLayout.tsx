@@ -1,4 +1,12 @@
-import { CalendarDays, Home, LogOut, Menu, Settings, X } from "lucide-react";
+import {
+  CalendarDays,
+  FilePlus2,
+  Home,
+  LogOut,
+  Menu,
+  Palmtree,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
@@ -18,9 +26,15 @@ const navigationItems = [
     end: false,
   },
   {
-    label: "Configuración",
+    label: "Nueva reserva",
+    to: "/admin/nueva-reserva",
+    icon: FilePlus2,
+    end: false,
+  },
+  {
+    label: "Modo vacaciones",
     to: "/admin/configuracion",
-    icon: Settings,
+    icon: Palmtree,
     end: false,
   },
 ];

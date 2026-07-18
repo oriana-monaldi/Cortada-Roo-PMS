@@ -12,6 +12,7 @@ import {
   type User,
 } from "firebase/auth";
 
+import { isAdminEmail } from "../admin/adminAccess";
 import { auth } from "../firebase/config";
 
 type AuthContextValue = {
@@ -35,6 +36,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser && !isAdminEmail(currentUser.email)) {
+        void signOut(auth);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       setUser(currentUser);
       setLoading(false);
     });
@@ -43,7 +51,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email.trim(), password);
+    const credential = await signInWithEmailAndPassword(
+      auth,
+      email.trim(),
+      password,
+    );
+
+    if (!isAdminEmail(credential.user.email)) {
+      await signOut(auth);
+      throw new Error("Esta cuenta no tiene acceso al panel administrativo.");
+    }
   };
 
   const logout = async () => {

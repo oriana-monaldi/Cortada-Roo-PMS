@@ -6,6 +6,12 @@ export type ReservationStatus =
   | "checked-out"
   | "cancelled";
 
+export type ReservationSource =
+  | "website"
+  | "particular"
+  | "booking"
+  | "airbnb";
+
 export type Reservation = {
   id: string;
 
@@ -17,6 +23,7 @@ export type Reservation = {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  source: ReservationSource;
 
   estimatedCheckInTime: string;
   observations: string;
@@ -47,6 +54,7 @@ export type CreateReservationInput = {
   guestName: string;
   guestEmail: string;
   guestPhone: string;
+  source?: ReservationSource;
 
   estimatedCheckInTime: string;
   observations: string;
@@ -57,4 +65,11 @@ export type CreateReservationInput = {
   checkOut: Date;
 
   pricePerNight: number;
+};
+
+export type CreateAdminReservationInput = Omit<
+  CreateReservationInput,
+  "apartmentName" | "pricePerNight"
+> & {
+  source: ReservationSource;
 };

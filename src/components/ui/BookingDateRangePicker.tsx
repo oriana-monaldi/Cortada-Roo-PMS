@@ -4,9 +4,14 @@ import { DayPicker, type DateRange } from "react-day-picker";
 import { es } from "react-day-picker/locale";
 import "react-day-picker/style.css";
 
+import type { VacationPeriod } from "../../types/vacation";
+
 type BookingDateRangePickerProps = {
   selectedRange: DateRange | undefined;
   onRangeChange: (range: DateRange | undefined) => void;
+  vacationPeriods?: VacationPeriod[];
+  vacationMessage?: string;
+  onVacationMessageChange?: (message: string) => void;
 };
 
 const normalizeDate = (date: Date) => {
@@ -37,6 +42,9 @@ const getNights = (range?: DateRange) => {
 const BookingDateRangePicker = ({
   selectedRange,
   onRangeChange,
+  vacationPeriods = [],
+  vacationMessage = "",
+  onVacationMessageChange,
 }: BookingDateRangePickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [numberOfMonths, setNumberOfMonths] = useState(1);
@@ -45,6 +53,16 @@ const BookingDateRangePicker = ({
 
   const today = useMemo(() => normalizeDate(new Date()), []);
   const nights = getNights(selectedRange);
+  const disabledDays = useMemo(
+    () => [
+      { before: today },
+      ...vacationPeriods.map((period) => ({
+        from: normalizeDate(period.startDate),
+        to: normalizeDate(period.endDate),
+      })),
+    ],
+    [today, vacationPeriods],
+  );
 
   const hasCompleteRange = Boolean(selectedRange?.from && selectedRange?.to);
 
@@ -75,10 +93,12 @@ const BookingDateRangePicker = ({
     }
 
     onRangeChange(nextRange);
+    onVacationMessageChange?.("");
   };
 
   const handleClear = () => {
     onRangeChange(undefined);
+    onVacationMessageChange?.("");
   };
 
   useEffect(() => {
@@ -234,12 +254,35 @@ const BookingDateRangePicker = ({
               lang="es-AR"
               selected={selectedRange}
               onSelect={handleRangeSelect}
-              disabled={{ before: today }}
+              onDayClick={(date, modifiers) => {
+                if (!modifiers.disabled) {
+                  return;
+                }
+
+                const blockedPeriod = vacationPeriods.find((period) => {
+                  const currentDate = normalizeDate(date).getTime();
+                  const startDate = normalizeDate(period.startDate).getTime();
+                  const endDate = normalizeDate(period.endDate).getTime();
+
+                  return currentDate >= startDate && currentDate <= endDate;
+                });
+
+                if (blockedPeriod) {
+                  onVacationMessageChange?.(
+                    `Esas fechas no están disponibles por modo vacaciones del ${formatDate(blockedPeriod.startDate)} al ${formatDate(blockedPeriod.endDate)}.`,
+                  );
+                  return;
+                }
+
+                onVacationMessageChange?.("");
+              }}
+              disabled={disabledDays}
               defaultMonth={selectedRange?.from ?? today}
               numberOfMonths={numberOfMonths}
               pagedNavigation={numberOfMonths === 2}
               showOutsideDays
               min={1}
+              excludeDisabled
               className="booking-date-picker"
               components={{
                 Chevron: ({ orientation }) =>
@@ -264,7 +307,9 @@ const BookingDateRangePicker = ({
             "
           >
             <div className="text-xs text-[#6d5e51]">
-              {selectedRange?.from && selectedRange?.to ? (
+              {vacationMessage ? (
+                <span className="font-medium text-red-700">{vacationMessage}</span>
+              ) : selectedRange?.from && selectedRange?.to ? (
                 <span>
                   {formatDate(selectedRange.from)} –{" "}
                   {formatDate(selectedRange.to)}{" "}

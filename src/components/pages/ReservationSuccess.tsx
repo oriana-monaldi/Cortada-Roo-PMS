@@ -8,7 +8,7 @@ import {
   Landmark,
   MessageCircle,
 } from "lucide-react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import Navbar from "../layouts/Navbar";
 
@@ -55,13 +55,10 @@ const formatRemainingTime = (milliseconds: number) => {
 };
 
 const ReservationSuccess = () => {
-  const [searchParams] = useSearchParams();
   const location = useLocation();
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
-
-  const reservationId = searchParams.get("id");
 
   const locationState =
     location.state as ReservationSuccessLocationState | null;

@@ -1,18 +1,13 @@
-import {
-  BedDouble,
-  CalendarClock,
-  CalendarDays,
-  ChevronRight,
-  RefreshCw,
-} from "lucide-react";
+import { BedDouble, CalendarClock, CalendarDays, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { getReservations } from "../../services/reservationService";
+import { getVacationPeriods } from "../../services/vacationService";
 import OccupancyCalendar from "../components/OccupancyCalendar";
 
 type Reservations = Awaited<ReturnType<typeof getReservations>>;
 type Reservation = Reservations[number];
+type VacationPeriods = Awaited<ReturnType<typeof getVacationPeriods>>;
 
 const TOTAL_ROOMS = 7;
 
@@ -33,12 +28,30 @@ const isSameDay = (firstDate: Date | null | undefined, secondDate: Date) => {
   );
 };
 
+const isActiveReservation = (reservation: Reservation, now: number) => {
+  if (
+    reservation.status === "cancelled" ||
+    reservation.status === "expired" ||
+    reservation.status === "checked-out"
+  ) {
+    return false;
+  }
+
+  if (
+    reservation.status === "pending" &&
+    reservation.expiresAt.getTime() <= now
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
 const reservationOccupiesDay = (reservation: Reservation, day: Date) => {
   if (
     !reservation.checkIn ||
     !reservation.checkOut ||
-    reservation.status === "cancelled" ||
-    reservation.status === "checked-out"
+    !isActiveReservation(reservation, Date.now())
   ) {
     return false;
   }
@@ -58,46 +71,9 @@ const formatToday = () =>
     year: "numeric",
   }).format(new Date());
 
-const formatShortDate = (date?: Date | null) => {
-  if (!date) {
-    return "Sin fecha";
-  }
-
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "2-digit",
-    month: "short",
-  }).format(date);
-};
-
-const getStatusLabel = (status?: string) => {
-  const labels: Record<string, string> = {
-    pending: "Pendiente",
-    confirmed: "Confirmada",
-    "checked-in": "Alojado",
-    "checked-out": "Finalizada",
-    cancelled: "Cancelada",
-  };
-
-  return labels[status ?? ""] ?? status ?? "Sin estado";
-};
-
-const getStatusClasses = (status?: string) => {
-  const classes: Record<string, string> = {
-    pending: "bg-amber-50 text-amber-700 ring-amber-200",
-    confirmed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    "checked-in": "bg-[#eef1f6] text-[#26354a] ring-[#d7deea]",
-    "checked-out": "bg-neutral-100 text-neutral-600 ring-neutral-200",
-    cancelled: "bg-red-50 text-red-700 ring-red-200",
-  };
-
-  return (
-    classes[status ?? ""] ?? "bg-neutral-100 text-neutral-600 ring-neutral-200"
-  );
-};
-
 const Dashboard = () => {
   const [reservations, setReservations] = useState<Reservations>([]);
-
+  const [vacationPeriods, setVacationPeriods] = useState<VacationPeriods>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -106,7 +82,10 @@ const Dashboard = () => {
       setLoading(true);
       setError("");
 
-      const data = await getReservations();
+      const [data, vacations] = await Promise.all([
+        getReservations(),
+        getVacationPeriods(),
+      ]);
 
       const sortedReservations = [...data].sort(
         (firstReservation, secondReservation) => {
@@ -119,6 +98,7 @@ const Dashboard = () => {
       );
 
       setReservations(sortedReservations);
+      setVacationPeriods(vacations);
     } catch (loadError) {
       console.error("Error cargando el dashboard:", loadError);
 
@@ -134,6 +114,7 @@ const Dashboard = () => {
 
   const summary = useMemo(() => {
     const today = normalizeDate(new Date());
+    const now = Date.now();
 
     const occupiedToday = reservations.filter((reservation) =>
       reservationOccupiesDay(reservation, today),
@@ -141,13 +122,15 @@ const Dashboard = () => {
 
     const arrivalsToday = reservations.filter(
       (reservation) =>
-        reservation.status !== "cancelled" &&
-        reservation.status !== "checked-out" &&
+        (reservation.status === "confirmed" ||
+          reservation.status === "checked-in") &&
         isSameDay(reservation.checkIn, today),
     );
 
     const pendingReservations = reservations.filter(
-      (reservation) => reservation.status === "pending",
+      (reservation) =>
+        reservation.status === "pending" &&
+        reservation.expiresAt.getTime() > now,
     );
 
     return {
@@ -155,24 +138,6 @@ const Dashboard = () => {
       arrivals: arrivalsToday.length,
       pending: pendingReservations.length,
     };
-  }, [reservations]);
-
-  const recentReservations = useMemo(
-    () => reservations.slice(0, 5),
-    [reservations],
-  );
-
-  const todayReservations = useMemo(() => {
-    const today = normalizeDate(new Date());
-
-    return reservations
-      .filter(
-        (reservation) =>
-          reservationOccupiesDay(reservation, today) ||
-          isSameDay(reservation.checkIn, today) ||
-          isSameDay(reservation.checkOut, today),
-      )
-      .slice(0, 5);
   }, [reservations]);
 
   const indicators = [
@@ -203,212 +168,90 @@ const Dashboard = () => {
   ];
 
   return (
-    <section className="mx-auto w-full min-w-0 max-w-[1440px] space-y-4 overflow-x-hidden sm:space-y-5">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#b67b45] sm:text-xs">
-            Recepción
-          </p>
+    <>
+      <section className="mx-auto w-full min-w-0 max-w-[1440px] space-y-4 overflow-x-hidden sm:space-y-5">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#b67b45] sm:text-xs">
+              Recepción
+            </p>
 
-          <h1 className="mt-1 font-serif text-2xl font-semibold text-[#172033] lg:text-3xl">
-            Estado de hoy
-          </h1>
+            <h1 className="mt-1 font-serif text-2xl font-semibold text-[#172033] lg:text-3xl">
+              Estado de hoy
+            </h1>
 
-          <p className="mt-1 text-xs capitalize text-neutral-500 sm:text-sm">
-            {formatToday()}
-          </p>
-        </div>
+            <p className="mt-1 text-xs capitalize text-neutral-500 sm:text-sm">
+              {formatToday()}
+            </p>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => void loadReservations()}
-          disabled={loading}
-          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-[#ded8d1] bg-white px-3 text-xs font-medium text-[#273246] transition hover:border-[#b67b45] hover:text-[#9a6235] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-sm"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Actualizar
-        </button>
-      </header>
-
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {indicators.map((indicator) => {
-          const Icon = indicator.icon;
-
-          return (
-            <article
-              key={indicator.label}
-              className="flex min-w-0 items-center gap-3 rounded-xl border border-[#e7e1da] bg-white px-3 py-3 lg:px-4"
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => void loadReservations()}
+              disabled={loading}
+              className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-[#ded8d1] bg-white px-3 text-xs font-medium text-[#273246] transition hover:border-[#b67b45] hover:text-[#9a6235] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:text-sm"
             >
-              <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${indicator.iconClasses}`}
+              <RefreshCw
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+              />
+              Actualizar
+            </button>
+          </div>
+        </header>
+
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {indicators.map((indicator) => {
+            const Icon = indicator.icon;
+
+            return (
+              <article
+                key={indicator.label}
+                className="flex min-w-0 items-center gap-3 rounded-xl border border-[#e7e1da] bg-white px-3 py-3 lg:px-4"
               >
-                <Icon className="h-4 w-4" />
-              </div>
-
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <p
-                    className={`text-xl font-semibold ${indicator.valueClasses}`}
-                  >
-                    {loading ? "—" : indicator.value}
-                  </p>
-
-                  <p className="text-xs font-medium text-[#273246] lg:text-sm">
-                    {indicator.label}
-                  </p>
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${indicator.iconClasses}`}
+                >
+                  <Icon className="h-4 w-4" />
                 </div>
 
-                <p className="mt-0.5 truncate text-[10px] text-neutral-500 lg:text-xs">
-                  {indicator.helper}
-                </p>
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      <div className="w-full min-w-0">
-        <OccupancyCalendar
-          reservations={reservations}
-          totalRooms={TOTAL_ROOMS}
-        />
-      </div>
-
-      <div className="grid min-w-0 grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]">
-        <section className="min-w-0 rounded-2xl border border-[#e7e1da] bg-[#fffdfb] p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b67b45] sm:text-xs">
-                Actividad
-              </p>
-
-              <h2 className="mt-1 font-serif text-xl font-semibold text-[#172033]">
-                Reservas recientes
-              </h2>
-            </div>
-
-            <Link
-              to="/admin/reservas"
-              className="inline-flex items-center gap-1 self-start text-xs font-medium text-[#9a6235] transition hover:text-[#744827] sm:self-auto sm:text-sm"
-            >
-              Ver todas
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          <div className="mt-4 divide-y divide-[#ece6df]">
-            {loading ? (
-              <p className="py-5 text-sm text-neutral-500">
-                Cargando reservas...
-              </p>
-            ) : recentReservations.length === 0 ? (
-              <p className="py-6 text-sm text-neutral-500">
-                Todavía no hay reservas registradas.
-              </p>
-            ) : (
-              recentReservations.map((reservation) => (
-                <article
-                  key={reservation.id}
-                  className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[#273246]">
-                      {reservation.guestName || "Huésped"}
-                    </p>
-
-                    <p className="mt-0.5 text-xs text-neutral-500">
-                      {formatShortDate(reservation.checkIn)} —{" "}
-                      {formatShortDate(reservation.checkOut)}
-                    </p>
-                  </div>
-
-                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 md:justify-end">
-                    <p className="max-w-full truncate text-xs text-neutral-500 md:max-w-44">
-                      {reservation.apartmentName ?? "Habitación"}
-                    </p>
-
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-inset ${getStatusClasses(
-                        reservation.status,
-                      )}`}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <p
+                      className={`text-xl font-semibold ${indicator.valueClasses}`}
                     >
-                      {getStatusLabel(reservation.status)}
-                    </span>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
+                      {loading ? "—" : indicator.value}
+                    </p>
 
-        <aside className="min-w-0 rounded-2xl border border-[#e7e1da] bg-white p-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#b67b45] sm:text-xs">
-            Hoy
-          </p>
-
-          <h2 className="mt-1 font-serif text-xl font-semibold text-[#172033]">
-            Movimiento del día
-          </h2>
-
-          <div className="mt-4 space-y-2">
-            {loading ? (
-              <p className="text-sm text-neutral-500">Cargando actividad...</p>
-            ) : todayReservations.length === 0 ? (
-              <div className="rounded-xl bg-[#f7f3ee] px-4 py-5 text-center">
-                <p className="text-sm font-medium text-[#273246]">
-                  Día tranquilo
-                </p>
-
-                <p className="mt-1 text-xs text-neutral-500">
-                  No hay movimientos registrados para hoy.
-                </p>
-              </div>
-            ) : (
-              todayReservations.map((reservation) => (
-                <article
-                  key={reservation.id}
-                  className="min-w-0 rounded-xl border border-[#ece6df] p-3"
-                >
-                  <div className="flex min-w-0 items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#273246]">
-                        {reservation.guestName || "Huésped"}
-                      </p>
-
-                      <p className="mt-0.5 truncate text-xs text-neutral-500">
-                        {reservation.apartmentName ?? "Habitación"}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ring-1 ring-inset ${getStatusClasses(
-                        reservation.status,
-                      )}`}
-                    >
-                      {getStatusLabel(reservation.status)}
-                    </span>
+                    <p className="text-xs font-medium text-[#273246] lg:text-sm">
+                      {indicator.label}
+                    </p>
                   </div>
 
-                  <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-neutral-500 sm:grid-cols-2 sm:gap-3">
-                    <span>Entrada: {formatShortDate(reservation.checkIn)}</span>
+                  <p className="mt-0.5 truncate text-[10px] text-neutral-500 lg:text-xs">
+                    {indicator.helper}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
 
-                    <span className="sm:text-right">
-                      Salida: {formatShortDate(reservation.checkOut)}
-                    </span>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </aside>
-      </div>
-    </section>
+        <div className="w-full min-w-0">
+          <OccupancyCalendar
+            reservations={reservations}
+            vacationPeriods={vacationPeriods}
+            totalRooms={TOTAL_ROOMS}
+          />
+        </div>
+      </section>
+    </>
   );
 };
 

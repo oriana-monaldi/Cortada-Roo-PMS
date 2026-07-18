@@ -3,7 +3,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AdminLayout from "./admin/layouts/AdminLayout";
 import Dashboard from "./admin/pages/Dashboard";
 import Login from "./admin/pages/Login";
+import NewReservation from "./admin/pages/NewReservation";
 import Reservations from "./admin/pages/Reservations";
+import Settings from "./admin/pages/Settings";
 import ProtectedRoute from "./admin/routes/ProtectedRoute";
 
 import PublicLayout from "./components/layouts/PublicLayout";
@@ -37,6 +39,8 @@ function App() {
         <Route element={<AdminLayout />}>
           <Route path="/admin" element={<Dashboard />} />
           <Route path="/admin/reservas" element={<Reservations />} />
+          <Route path="/admin/nueva-reserva" element={<NewReservation />} />
+          <Route path="/admin/configuracion" element={<Settings />} />
         </Route>
       </Route>
 

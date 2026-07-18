@@ -1,15 +1,18 @@
 import {
   CalendarDays,
   ChevronDown,
+  Loader2,
   ShieldCheck,
   Tag,
   UserRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { useNavigate } from "react-router-dom";
 
 import heroImage from "../../assets/img1.jpeg";
+import { getVacationPeriods } from "../../services/vacationService";
+import type { VacationPeriod } from "../../types/vacation";
 import BookingDateRangePicker from "../ui/BookingDateRangePicker";
 
 const formatQueryDate = (date: Date) => {
@@ -26,12 +29,31 @@ const HeroSection = () => {
   const [selectedRange, setSelectedRange] = useState<DateRange | undefined>();
   const [guests, setGuests] = useState(2);
   const [searchError, setSearchError] = useState("");
+  const [vacationMessage, setVacationMessage] = useState("");
+  const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
+  const [loadingVacationPeriods, setLoadingVacationPeriods] = useState(true);
+
+  useEffect(() => {
+    const loadVacationPeriods = async () => {
+      try {
+        const periods = await getVacationPeriods();
+        setVacationPeriods(periods);
+      } catch (error) {
+        console.error("Error al cargar los períodos de vacaciones:", error);
+      } finally {
+        setLoadingVacationPeriods(false);
+      }
+    };
+
+    void loadVacationPeriods();
+  }, []);
 
   const hasCompleteRange = Boolean(selectedRange?.from && selectedRange?.to);
 
   const handleRangeChange = (range: DateRange | undefined) => {
     setSelectedRange(range);
     setSearchError("");
+    setVacationMessage("");
   };
 
   const handleSearch = () => {
@@ -150,6 +172,9 @@ const HeroSection = () => {
                 <BookingDateRangePicker
                   selectedRange={selectedRange}
                   onRangeChange={handleRangeChange}
+                  vacationPeriods={vacationPeriods}
+                  vacationMessage={vacationMessage}
+                  onVacationMessageChange={setVacationMessage}
                 />
               </div>
 
@@ -219,6 +244,7 @@ const HeroSection = () => {
               <button
                 type="button"
                 onClick={handleSearch}
+                disabled={loadingVacationPeriods}
                 className={`
                   flex h-[62px] w-full items-center justify-center
                   rounded-xl px-6
@@ -233,21 +259,28 @@ const HeroSection = () => {
                   lg:min-w-[220px]
 
                   ${
-                    hasCompleteRange
+                    loadingVacationPeriods
+                      ? "bg-[#d9c5b0] text-[#704c31]"
+                      : hasCompleteRange
                       ? "bg-[#8b6444] text-white hover:bg-[#704c31]"
                       : "bg-[#d9c5b0] text-[#704c31] hover:bg-[#ccb39a]"
                   }
                 `}
               >
-                {hasCompleteRange
+                {loadingVacationPeriods ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin" />
+                    Cargando fechas
+                  </span>
+                ) : hasCompleteRange
                   ? "Buscar disponibilidad"
                   : "Elegí las fechas"}
               </button>
             </div>
 
-            {searchError && (
+            {(searchError || vacationMessage) && (
               <p role="alert" className="mt-3 text-sm font-medium text-red-700">
-                {searchError}
+                {searchError || vacationMessage}
               </p>
             )}
           </div>

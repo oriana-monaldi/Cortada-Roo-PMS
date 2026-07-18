@@ -1,0 +1,136 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed data model
+// ===============================================================
+// reservations: private guest and booking data. Public users may only create
+// a strictly validated pending website request; administrators manage it.
+// vacationPeriods: public availability blocks without personal information.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        request.auth.token.email == 'facuaiello82@gmail.com';
+    }
+
+    function hasReservationFields() {
+      return request.resource.data.keys().hasAll([
+        'apartmentId', 'apartmentName', 'guestName', 'guestEmail',
+        'guestPhone', 'source', 'estimatedCheckInTime', 'observations',
+        'guests', 'checkIn', 'checkOut', 'nights', 'pricePerNight',
+        'totalPrice', 'status', 'reservationCode', 'expiresAt',
+        'confirmedAt', 'createdAt', 'updatedAt'
+      ]) && request.resource.data.keys().hasOnly([
+        'apartmentId', 'apartmentName', 'guestName', 'guestEmail',
+        'guestPhone', 'source', 'estimatedCheckInTime', 'observations',
+        'guests', 'checkIn', 'checkOut', 'nights', 'pricePerNight',
+        'totalPrice', 'status', 'reservationCode', 'expiresAt',
+        'confirmedAt', 'createdAt', 'updatedAt'
+      ]);
+    }
+
+    function isValidReservation() {
+      return hasReservationFields() &&
+        request.resource.data.apartmentId is string &&
+        request.resource.data.apartmentId.size() > 0 &&
+        request.resource.data.apartmentId.size() <= 80 &&
+        request.resource.data.apartmentName is string &&
+        request.resource.data.apartmentName.size() > 0 &&
+        request.resource.data.apartmentName.size() <= 120 &&
+        request.resource.data.guestName is string &&
+        request.resource.data.guestName.size() >= 3 &&
+        request.resource.data.guestName.size() <= 70 &&
+        request.resource.data.guestEmail is string &&
+        request.resource.data.guestEmail.size() <= 254 &&
+        request.resource.data.guestEmail.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+        request.resource.data.guestPhone is string &&
+        request.resource.data.guestPhone.matches('^[0-9]{10,11}$') &&
+        request.resource.data.source in ['website', 'particular', 'booking', 'airbnb'] &&
+        request.resource.data.estimatedCheckInTime is string &&
+        request.resource.data.estimatedCheckInTime.size() <= 20 &&
+        request.resource.data.observations is string &&
+        request.resource.data.observations.size() <= 300 &&
+        request.resource.data.guests is int &&
+        request.resource.data.guests >= 1 && request.resource.data.guests <= 10 &&
+        request.resource.data.checkIn is timestamp &&
+        request.resource.data.checkOut is timestamp &&
+        request.resource.data.checkOut > request.resource.data.checkIn &&
+        request.resource.data.nights is int &&
+        request.resource.data.nights >= 1 && request.resource.data.nights <= 90 &&
+        request.resource.data.pricePerNight is number &&
+        request.resource.data.pricePerNight >= 0 &&
+        request.resource.data.totalPrice is number &&
+        request.resource.data.totalPrice >= 0 &&
+        request.resource.data.status in ['pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled', 'expired'] &&
+        request.resource.data.reservationCode is string &&
+        request.resource.data.reservationCode.matches('^[A-Z]{6}$') &&
+        request.resource.data.expiresAt is timestamp &&
+        (request.resource.data.confirmedAt == null || request.resource.data.confirmedAt is timestamp) &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.updatedAt is timestamp;
+    }
+
+    function isValidPublicReservationCreate() {
+      return isValidReservation() &&
+        request.resource.data.source == 'website' &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.confirmedAt == null &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time &&
+        request.resource.data.expiresAt > request.time &&
+        request.resource.data.expiresAt <= request.time + duration.value(15, 'm');
+    }
+
+    function hasVacationFields() {
+      return request.resource.data.keys().hasAll([
+        'startDate', 'endDate', 'note', 'createdAt', 'updatedAt'
+      ]) && request.resource.data.keys().hasOnly([
+        'startDate', 'endDate', 'note', 'createdAt', 'updatedAt'
+      ]);
+    }
+
+    function isValidVacationPeriod() {
+      return hasVacationFields() &&
+        request.resource.data.startDate is timestamp &&
+        request.resource.data.endDate is timestamp &&
+        request.resource.data.endDate >= request.resource.data.startDate &&
+        request.resource.data.note is string &&
+        request.resource.data.note.size() > 0 &&
+        request.resource.data.note.size() <= 120 &&
+        request.resource.data.createdAt is timestamp &&
+        request.resource.data.updatedAt is timestamp;
+    }
+
+    match /reservations/{reservationId} {
+      allow create: if isValidPublicReservationCreate() ||
+        (isAdmin() && isValidReservation() &&
+          request.resource.data.createdAt == request.time &&
+          request.resource.data.updatedAt == request.time);
+      allow read: if isAdmin();
+      allow update: if isAdmin() && isValidReservation() &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /vacationPeriods/{periodId} {
+      // This collection contains only blocked dates, never guest information.
+      allow read: if true;
+      allow create: if isAdmin() && isValidVacationPeriod() &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time;
+      allow update: if isAdmin() && isValidVacationPeriod() &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

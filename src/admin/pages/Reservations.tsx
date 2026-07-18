@@ -1,6 +1,8 @@
 import {
   BedDouble,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   Check,
   CheckCircle2,
   Clock3,
@@ -59,6 +61,13 @@ const statusStyles: Record<ReservationStatus, string> = {
   cancelled: "border-red-200 bg-red-50 text-red-700",
 };
 
+const sourceLabels: Record<string, string> = {
+  website: "Página web",
+  particular: "Particular",
+  booking: "Booking",
+  airbnb: "Airbnb",
+};
+
 const formatDate = (date: Date) => {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
@@ -79,6 +88,46 @@ const formatDateTime = (date: Date) => {
 
 const formatPrice = (price: number) => {
   return price.toLocaleString("es-AR");
+};
+
+const getReservationPriority = (reservation: Reservation) => {
+  switch (reservation.status) {
+    case "pending":
+      return reservation.expiresAt.getTime() > Date.now() ? 0 : 1;
+    case "expired":
+      return 1;
+    case "confirmed":
+      return 2;
+    case "checked-in":
+      return 3;
+    case "checked-out":
+      return 4;
+    case "cancelled":
+      return 5;
+    default:
+      return 6;
+  }
+};
+
+const sortReservations = (reservations: Reservation[]) => {
+  return [...reservations].sort((first, second) => {
+    const firstPriority = getReservationPriority(first);
+    const secondPriority = getReservationPriority(second);
+
+    if (firstPriority !== secondPriority) {
+      return firstPriority - secondPriority;
+    }
+
+    const firstCheckIn = first.checkIn?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
+    const secondCheckIn =
+      second.checkIn?.getTime?.() ?? Number.MAX_SAFE_INTEGER;
+
+    if (firstCheckIn !== secondCheckIn) {
+      return firstCheckIn - secondCheckIn;
+    }
+
+    return second.createdAt.getTime() - first.createdAt.getTime();
+  });
 };
 
 const getExpirationText = (reservation: Reservation) => {
@@ -114,6 +163,7 @@ const Reservations = () => {
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadReservations = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true);
@@ -123,10 +173,7 @@ const Reservations = () => {
 
     try {
       const result = await getReservations();
-      const sortedReservations = [...result].sort(
-        (first, second) =>
-          second.createdAt.getTime() - first.createdAt.getTime(),
-      );
+      const sortedReservations = sortReservations(result);
       setReservations(sortedReservations);
     } catch (currentError) {
       console.error("Error al cargar reservas:", currentError);
@@ -317,292 +364,342 @@ const Reservations = () => {
       )}
 
       {!loading && !error && filteredReservations.length > 0 && (
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {filteredReservations.map((reservation) => {
             const isUpdating = updatingId === reservation.id;
             const expirationText = getExpirationText(reservation);
+            const isExpanded = expandedId === reservation.id;
 
             return (
               <article
                 key={reservation.id}
-                className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_6px_20px_rgba(0,0,0,0.04)]"
+                className="flex h-full flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-[0_10px_28px_rgba(0,0,0,0.04)]"
               >
-                <div className="p-5 sm:p-6">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-lg font-semibold text-neutral-950">
-                          {reservation.guestName}
-                        </h2>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedId((current) =>
+                      current === reservation.id ? null : reservation.id,
+                    )
+                  }
+                  className="flex flex-1 flex-col w-full px-4 py-4 text-left transition hover:bg-neutral-50 sm:px-5"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-base font-semibold text-neutral-950">
+                        {reservation.guestName}
+                      </h2>
+
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${statusStyles[reservation.status]}`}
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${statusStyles[reservation.status]}`}
                         >
                           {statusLabels[reservation.status]}
                         </span>
+                        <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-[10px] font-semibold text-neutral-600">
+                          {sourceLabels[reservation.source] ?? "Sin origen"}
+                        </span>
+                        <span className="inline-flex rounded-full bg-[#f6f1ea] px-2.5 py-1 text-[10px] font-semibold text-[#8b6544]">
+                          Código {reservation.reservationCode ?? reservation.id}
+                        </span>
                       </div>
-                      <p className="mt-2 text-xs text-neutral-400">
-                        Código: {reservation.reservationCode ?? reservation.id}
-                      </p>
 
-                      {expirationText && (
-                        <p
-                          className={`mt-2 text-xs font-semibold ${
-                            reservation.status === "expired" ||
-                            reservation.expiresAt.getTime() <= Date.now()
-                              ? "text-red-700"
-                              : "text-amber-700"
-                          }`}
-                        >
-                          {expirationText}
-                        </p>
-                      )}
+                      <div className="mt-2 min-h-[18px]">
+                        {expirationText && (
+                          <p
+                            className={`text-[11px] font-semibold ${
+                              reservation.status === "expired" ||
+                              reservation.expiresAt.getTime() <= Date.now()
+                                ? "text-red-700"
+                                : "text-amber-700"
+                            }`}
+                          >
+                            {expirationText}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="text-left lg:text-right">
-                      <p className="text-xs font-medium text-neutral-500">
-                        Total de la estadía
+                    <div className="shrink-0 text-neutral-400">
+                      {isExpanded ? (
+                        <ChevronUp size={18} strokeWidth={2} />
+                      ) : (
+                        <ChevronDown size={18} strokeWidth={2} />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                        Habitación
                       </p>
-                      <p className="mt-1 font-serif text-2xl font-bold text-neutral-950">
+                      <div className="mt-1 flex items-start gap-2 text-sm font-medium text-neutral-900">
+                        <BedDouble
+                          size={16}
+                          strokeWidth={1.8}
+                          className="mt-0.5 shrink-0 text-[#9b6f45]"
+                        />
+                        <span>{reservation.apartmentName}</span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                        Total
+                      </p>
+                      <p className="mt-1 font-serif text-xl font-bold text-neutral-950">
                         ${formatPrice(reservation.totalPrice)}
                       </p>
                     </div>
-                  </div>
 
-                  <div className="mt-5 grid grid-cols-1 gap-4 border-y border-neutral-100 py-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="flex gap-3">
-                      <BedDouble
-                        size={18}
-                        strokeWidth={1.7}
-                        className="mt-0.5 shrink-0 text-[#9b6f45]"
-                      />
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-500">
-                          Habitación
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-neutral-900">
-                          {reservation.apartmentName}
-                        </p>
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                        Estadía
+                      </p>
+                      <div className="mt-1 flex items-start gap-2 text-sm text-neutral-800">
+                        <CalendarDays
+                          size={16}
+                          strokeWidth={1.8}
+                          className="mt-0.5 shrink-0 text-[#9b6f45]"
+                        />
+                        <div>
+                          <p>{formatDate(reservation.checkIn)}</p>
+                          <p className="text-neutral-500">
+                            hasta {formatDate(reservation.checkOut)}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex gap-3">
-                      <CalendarDays
-                        size={18}
-                        strokeWidth={1.7}
-                        className="mt-0.5 shrink-0 text-[#9b6f45]"
-                      />
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-500">
-                          Estadía
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-neutral-900">
-                          {formatDate(reservation.checkIn)}
-                        </p>
-                        <p className="text-sm text-neutral-600">
-                          hasta {formatDate(reservation.checkOut)}
-                        </p>
-                        <p className="mt-1 text-xs text-neutral-400">
-                          {reservation.nights}{" "}
-                          {reservation.nights === 1 ? "noche" : "noches"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <UsersRound
-                        size={18}
-                        strokeWidth={1.7}
-                        className="mt-0.5 shrink-0 text-[#9b6f45]"
-                      />
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-500">
-                          Huéspedes
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-neutral-900">
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                        Huéspedes
+                      </p>
+                      <div className="mt-1 flex items-start gap-2 text-sm font-medium text-neutral-900">
+                        <UsersRound
+                          size={16}
+                          strokeWidth={1.8}
+                          className="mt-0.5 shrink-0 text-[#9b6f45]"
+                        />
+                        <span>
                           {reservation.guests}{" "}
                           {reservation.guests === 1 ? "huésped" : "huéspedes"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Clock3
-                        size={18}
-                        strokeWidth={1.7}
-                        className="mt-0.5 shrink-0 text-[#9b6f45]"
-                      />
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-500">
-                          Solicitud creada
-                        </p>
-                        <p className="mt-1 text-sm font-medium text-neutral-900">
-                          {formatDateTime(reservation.createdAt)}
-                        </p>
+                        </span>
                       </div>
                     </div>
                   </div>
+                </button>
 
-                  <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex min-w-0 flex-col gap-3 text-sm text-neutral-600 sm:flex-row sm:flex-wrap sm:items-center">
-                      <a
-                        href={`mailto:${reservation.guestEmail}`}
-                        className="flex min-w-0 items-center gap-2 transition hover:text-neutral-950"
-                      >
-                        <Mail
-                          size={16}
-                          strokeWidth={1.7}
-                          className="shrink-0 text-[#9b6f45]"
-                        />
-                        <span className="truncate">
-                          {reservation.guestEmail}
-                        </span>
-                      </a>
+                {isExpanded && (
+                  <div className="border-t border-neutral-100 px-4 py-4 sm:px-5">
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="rounded-xl border border-neutral-200 bg-white px-3 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                            Contacto
+                          </p>
+                          <div className="mt-2 flex min-w-0 flex-col gap-2 text-sm text-neutral-600">
+                            <a
+                              href={`mailto:${reservation.guestEmail}`}
+                              className="flex min-w-0 items-center gap-2 transition hover:text-neutral-950"
+                            >
+                              <Mail
+                                size={16}
+                                strokeWidth={1.7}
+                                className="shrink-0 text-[#9b6f45]"
+                              />
+                              <span className="truncate">
+                                {reservation.guestEmail}
+                              </span>
+                            </a>
 
-                      <a
-                        href={`tel:${reservation.guestPhone}`}
-                        className="flex items-center gap-2 transition hover:text-neutral-950"
-                      >
-                        <Phone
-                          size={16}
-                          strokeWidth={1.7}
-                          className="shrink-0 text-[#9b6f45]"
-                        />
-                        {reservation.guestPhone}
-                      </a>
+                            <a
+                              href={`tel:${reservation.guestPhone}`}
+                              className="flex items-center gap-2 transition hover:text-neutral-950"
+                            >
+                              <Phone
+                                size={16}
+                                strokeWidth={1.7}
+                                className="shrink-0 text-[#9b6f45]"
+                              />
+                              {reservation.guestPhone}
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-neutral-200 bg-white px-3 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                            Check-in aprox.
+                          </p>
+                          <div className="mt-2 flex items-start gap-2 text-sm font-medium text-neutral-900">
+                            <Clock3
+                              size={16}
+                              strokeWidth={1.8}
+                              className="mt-0.5 shrink-0 text-[#9b6f45]"
+                            />
+                            <span>
+                              {reservation.estimatedCheckInTime || "No informado"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-neutral-200 bg-white px-3 py-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                          Observaciones
+                        </p>
+                        <p
+                          className="mt-2 line-clamp-4 break-words text-sm leading-6 text-neutral-700"
+                          title={reservation.observations || "Sin observaciones"}
+                        >
+                          {reservation.observations || "Sin observaciones"}
+                        </p>
+                      </div>
+
                     </div>
+                  </div>
+                )}
 
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
-                      {reservation.status === "pending" && (
-                        <>
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() =>
-                              void updateReservationStatus(reservation.id, () =>
-                                confirmReservation(reservation.id),
-                              )
-                            }
-                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <Check size={16} strokeWidth={2} />
-                            Confirmar pago
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() =>
-                              void updateReservationStatus(reservation.id, () =>
-                                cancelReservation(reservation.id),
-                              )
-                            }
-                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <X size={16} strokeWidth={2} />
-                            Cancelar
-                          </button>
-                        </>
-                      )}
-
-                      {reservation.status === "confirmed" && (
-                        <>
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() =>
-                              void updateReservationStatus(reservation.id, () =>
-                                checkInReservation(reservation.id),
-                              )
-                            }
-                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-blue-600 px-4 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <LogIn size={16} strokeWidth={2} />
-                            Hacer check-in
-                          </button>
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() =>
-                              void updateReservationStatus(reservation.id, () =>
-                                cancelReservation(reservation.id),
-                              )
-                            }
-                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <XCircle size={16} strokeWidth={1.8} />
-                            Cancelar reserva
-                          </button>
-                        </>
-                      )}
-
-                      {reservation.status === "expired" && (
-                        <>
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() =>
-                              void updateReservationStatus(reservation.id, () =>
-                                recoverExpiredReservation(reservation.id),
-                              )
-                            }
-                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <Check size={16} strokeWidth={2} />
-                            Confirmar igualmente
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() =>
-                              void updateReservationStatus(reservation.id, () =>
-                                cancelReservation(reservation.id),
-                              )
-                            }
-                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <X size={16} strokeWidth={2} />
-                            Cancelar
-                          </button>
-                        </>
-                      )}
-
-                      {reservation.status === "checked-in" && (
+                <div className="mt-auto border-t border-neutral-100 px-4 py-4 sm:px-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+                    {reservation.status === "pending" && (
+                      <>
                         <button
                           type="button"
                           disabled={isUpdating}
-                          onClick={() =>
+                          onClick={(event) => {
+                            event.stopPropagation();
                             void updateReservationStatus(reservation.id, () =>
-                              checkOutReservation(reservation.id),
-                            )
-                          }
-                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-neutral-950 px-4 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                              confirmReservation(reservation.id),
+                            );
+                          }}
+                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                         >
-                          <LogOut size={16} strokeWidth={2} />
-                          Hacer check-out
+                          <Check size={16} strokeWidth={2} />
+                          Confirmar pago
                         </button>
-                      )}
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void updateReservationStatus(reservation.id, () =>
+                              cancelReservation(reservation.id),
+                            );
+                          }}
+                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          <X size={16} strokeWidth={2} />
+                          Cancelar
+                        </button>
+                      </>
+                    )}
 
-                      {reservation.status === "checked-out" && (
-                        <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-neutral-100 px-4 text-xs font-semibold text-neutral-600">
-                          <CheckCircle2 size={16} strokeWidth={1.8} />
-                          Estadía finalizada
-                        </span>
-                      )}
-
-                      {reservation.status === "cancelled" && (
-                        <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-red-50 px-4 text-xs font-semibold text-red-700">
+                    {reservation.status === "confirmed" && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void updateReservationStatus(reservation.id, () =>
+                              checkInReservation(reservation.id),
+                            );
+                          }}
+                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          <LogIn size={16} strokeWidth={2} />
+                          Hacer check-in
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void updateReservationStatus(reservation.id, () =>
+                              cancelReservation(reservation.id),
+                            );
+                          }}
+                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
                           <XCircle size={16} strokeWidth={1.8} />
-                          Reserva cancelada
-                        </span>
-                      )}
+                          Cancelar reserva
+                        </button>
+                      </>
+                    )}
 
-                      {isUpdating && (
-                        <span className="inline-flex h-10 items-center gap-2 px-2 text-xs font-medium text-neutral-500">
-                          <RefreshCw size={15} className="animate-spin" />
-                          Actualizando...
-                        </span>
-                      )}
-                    </div>
+                    {reservation.status === "expired" && (
+                      <>
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void updateReservationStatus(reservation.id, () =>
+                              recoverExpiredReservation(reservation.id),
+                            );
+                          }}
+                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          <Check size={16} strokeWidth={2} />
+                          Confirmar igualmente
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void updateReservationStatus(reservation.id, () =>
+                              cancelReservation(reservation.id),
+                            );
+                          }}
+                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                        >
+                          <X size={16} strokeWidth={2} />
+                          Cancelar
+                        </button>
+                      </>
+                    )}
+
+                    {reservation.status === "checked-in" && (
+                      <button
+                        type="button"
+                        disabled={isUpdating}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void updateReservationStatus(reservation.id, () =>
+                            checkOutReservation(reservation.id),
+                          );
+                        }}
+                        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                      >
+                        <LogOut size={16} strokeWidth={2} />
+                        Hacer check-out
+                      </button>
+                    )}
+
+                    {reservation.status === "checked-out" && (
+                      <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-neutral-100 px-4 text-xs font-semibold text-neutral-600 sm:w-auto">
+                        <CheckCircle2 size={16} strokeWidth={1.8} />
+                        Estadía finalizada
+                      </span>
+                    )}
+
+                    {reservation.status === "cancelled" && (
+                      <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 text-xs font-semibold text-red-700 sm:w-auto">
+                        <XCircle size={16} strokeWidth={1.8} />
+                        Reserva cancelada
+                      </span>
+                    )}
+
+                    {isUpdating && (
+                      <span className="inline-flex h-10 items-center gap-2 px-2 text-xs font-medium text-neutral-500">
+                        <RefreshCw size={15} className="animate-spin" />
+                        Actualizando...
+                      </span>
+                    )}
                   </div>
                 </div>
               </article>

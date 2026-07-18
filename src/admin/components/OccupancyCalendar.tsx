@@ -7,10 +7,14 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import type { VacationPeriod } from "../../types/vacation";
+
 type Reservation = {
   id: string;
   guestName?: string;
   guestEmail?: string;
+  estimatedCheckInTime?: string;
+  observations?: string;
 
   apartmentId?: string;
   apartmentName?: string;
@@ -28,6 +32,7 @@ type Reservation = {
 
 type OccupancyCalendarProps = {
   reservations: Reservation[];
+  vacationPeriods: VacationPeriod[];
   totalRooms: number;
 };
 
@@ -154,6 +159,15 @@ const reservationOccupiesDay = (reservation: Reservation, day: Date) => {
   return normalizedDay >= checkIn && normalizedDay < checkOut;
 };
 
+const vacationIncludesDay = (period: VacationPeriod, day: Date) => {
+  const normalizedDay = normalizeDate(day);
+
+  return (
+    normalizedDay >= normalizeDate(period.startDate) &&
+    normalizedDay <= normalizeDate(period.endDate)
+  );
+};
+
 const getReservationRoomCategory = (
   reservation: Reservation,
 ): RoomCategory | null => {
@@ -237,29 +251,29 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
 
   if (occupiedRooms === 0) {
     return {
-      label: "Todo disponible",
+      label: "Libre",
       border: "border-neutral-200",
-      background: "bg-white",
+      background: "bg-neutral-50",
       bar: "bg-neutral-300",
-      text: "text-neutral-500",
+      text: "text-neutral-600",
       dot: "bg-neutral-300",
     };
   }
 
   if (percentage < 40) {
     return {
-      label: "Ocupación baja",
-      border: "border-emerald-200",
-      background: "bg-emerald-50/60",
-      bar: "bg-emerald-400",
-      text: "text-emerald-700",
-      dot: "bg-emerald-400",
+      label: "Baja",
+      border: "border-cyan-200",
+      background: "bg-cyan-50/80",
+      bar: "bg-cyan-500",
+      text: "text-cyan-800",
+      dot: "bg-cyan-500",
     };
   }
 
   if (percentage < 70) {
     return {
-      label: "Ocupación media",
+      label: "Media",
       border: "border-amber-200",
       background: "bg-amber-50/60",
       bar: "bg-amber-400",
@@ -270,9 +284,9 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
 
   if (percentage < 100) {
     return {
-      label: "Poca disponibilidad",
+      label: "Alta",
       border: "border-orange-200",
-      background: "bg-orange-50/60",
+      background: "bg-orange-50/70",
       bar: "bg-orange-400",
       text: "text-orange-700",
       dot: "bg-orange-400",
@@ -281,11 +295,11 @@ const getOccupancyStyle = (occupiedRooms: number, totalRooms: number) => {
 
   return {
     label: "Completo",
-    border: "border-red-200",
-    background: "bg-red-50/60",
-    bar: "bg-red-400",
-    text: "text-red-700",
-    dot: "bg-red-400",
+    border: "border-rose-300",
+    background: "bg-rose-100/80",
+    bar: "bg-rose-600",
+    text: "text-rose-800",
+    dot: "bg-rose-600",
   };
 };
 
@@ -315,6 +329,7 @@ const getAvailabilityBadgeClasses = (available: number) => {
 
 const OccupancyCalendar = ({
   reservations,
+  vacationPeriods,
   totalRooms,
 }: OccupancyCalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(
@@ -387,6 +402,16 @@ const OccupancyCalendar = ({
     );
   }, [reservations, selectedDate]);
 
+  const selectedVacationPeriod = useMemo(() => {
+    if (!selectedDate) {
+      return null;
+    }
+
+    return vacationPeriods.find((period) =>
+      vacationIncludesDay(period, selectedDate),
+    );
+  }, [selectedDate, vacationPeriods]);
+
   const selectedAvailability = useMemo(
     () => getAvailabilityByCategory(selectedReservations),
     [selectedReservations],
@@ -432,6 +457,13 @@ const OccupancyCalendar = ({
     setSelectedDate(null);
   };
 
+  const goToToday = () => {
+    const today = new Date();
+
+    setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+    setSelectedDate(today);
+  };
+
   return (
     <>
       <section className="w-full min-w-0 rounded-2xl border border-[#e7e1da] bg-[#fffdfb] p-3 shadow-[0_10px_30px_rgba(32,28,24,0.04)] lg:p-4">
@@ -451,6 +483,14 @@ const OccupancyCalendar = ({
           </div>
 
           <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+            <button
+              type="button"
+              onClick={goToToday}
+              className="h-9 shrink-0 rounded-lg border border-[#e3ddd6] bg-white px-3 text-xs font-semibold text-[#273246] transition hover:border-[#b67b45] hover:text-[#9a6235]"
+            >
+              HOY
+            </button>
+
             <button
               type="button"
               onClick={goToPreviousMonth}
@@ -519,6 +559,10 @@ const OccupancyCalendar = ({
                 totalRooms,
               );
 
+              const vacationPeriod = vacationPeriods.find((period) =>
+                vacationIncludesDay(period, day),
+              );
+
               const today = isSameDay(day, new Date());
 
               const selected =
@@ -533,8 +577,8 @@ const OccupancyCalendar = ({
                     day,
                   )}`}
                   className={`min-h-14 min-w-0 overflow-hidden rounded-md border p-1 text-left transition hover:border-[#b67b45] sm:min-h-16 sm:rounded-lg sm:p-1.5 lg:min-h-20 lg:p-2 ${
-                    occupancyStyle.border
-                  } ${occupancyStyle.background} ${
+                    vacationPeriod ? "border-violet-300 bg-violet-100/80" : `${occupancyStyle.border} ${occupancyStyle.background}`
+                  } ${
                     selected ? "ring-2 ring-[#b67b45]/30" : ""
                   }`}
                 >
@@ -547,25 +591,31 @@ const OccupancyCalendar = ({
                       {day.getDate()}
                     </span>
 
-                    <span
-                      className={`hidden text-[9px] font-semibold xl:inline ${occupancyStyle.text}`}
-                    >
-                      {availableRooms} libres
-                    </span>
+                    {vacationPeriod ? (
+                      <span className="hidden rounded-full bg-violet-600 px-1.5 py-0.5 text-[8px] font-semibold text-white xl:inline">
+                        Vacaciones
+                      </span>
+                    ) : (
+                      <span className={`hidden text-[9px] font-semibold xl:inline ${occupancyStyle.text}`}>
+                        {availableRooms} libres
+                      </span>
+                    )}
                   </div>
 
                   <div className="mt-2 flex items-center justify-between xl:hidden">
                     <span
-                      className={`h-2 w-2 rounded-full ${occupancyStyle.dot}`}
+                      className={`h-2 w-2 rounded-full ${vacationPeriod ? "bg-violet-600" : occupancyStyle.dot}`}
                     />
 
                     <span className="text-[8px] font-semibold text-neutral-500 sm:text-[9px]">
-                      {occupiedRooms}/{totalRooms}
+                      {vacationPeriod ? "Vacaciones" : `${occupiedRooms}/${totalRooms}`}
                     </span>
                   </div>
 
                   <div className="mt-2 hidden xl:block">
-                    <div className="flex items-end justify-between gap-1">
+                    {vacationPeriod ? (
+                      <p className="text-[10px] font-semibold text-violet-800">Modo vacaciones</p>
+                    ) : <><div className="flex items-end justify-between gap-1">
                       <p className="text-xs font-semibold text-[#172033]">
                         {occupiedRooms}/{totalRooms}
                       </p>
@@ -583,6 +633,7 @@ const OccupancyCalendar = ({
                         }}
                       />
                     </div>
+                    </>}
                   </div>
                 </button>
               );
@@ -597,7 +648,7 @@ const OccupancyCalendar = ({
           </span>
 
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+            <span className="h-2.5 w-2.5 rounded-full bg-cyan-500" />
             Baja
           </span>
 
@@ -612,8 +663,13 @@ const OccupancyCalendar = ({
           </span>
 
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-600" />
             Completo
+          </span>
+
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-violet-600" />
+            Modo vacaciones
           </span>
         </div>
       </section>
@@ -669,6 +725,15 @@ const OccupancyCalendar = ({
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-5 sm:pb-5">
+              {selectedVacationPeriod && (
+                <section className="mb-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-violet-900">Modo vacaciones</p>
+                  <p className="mt-1 text-xs text-violet-800">
+                    El alojamiento no acepta reservas en esta fecha.
+                  </p>
+                </section>
+              )}
+
               <section>
                 <h4 className="text-sm font-semibold text-[#172033] sm:font-serif sm:text-lg">
                   Habitaciones disponibles
@@ -844,6 +909,19 @@ const OccupancyCalendar = ({
                           {reservation.guests ?? 0}{" "}
                           {reservation.guests === 1 ? "huésped" : "huéspedes"}
                         </div>
+
+                        <p className="mt-2 text-[11px] text-neutral-500">
+                          Check-in aprox.:{" "}
+                          <span className="font-medium text-neutral-700">
+                            {reservation.estimatedCheckInTime || "No informado"}
+                          </span>
+                        </p>
+
+                        {reservation.observations && (
+                          <p className="mt-1 line-clamp-2 text-[11px] text-neutral-500">
+                            Obs.: {reservation.observations}
+                          </p>
+                        )}
                       </article>
                     ))
                   )}

@@ -12,10 +12,23 @@ import {
 
 import { apartments, type Apartment } from "../data/apartments";
 import { db } from "../firebase/config";
-import type { CreateReservationInput, Reservation } from "../types/reservation";
+import {
+  getVacationBlockMessage,
+  getVacationConflict,
+  getVacationPeriods,
+} from "./vacationService";
+import type {
+  CreateAdminReservationInput,
+  CreateReservationInput,
+  Reservation,
+  ReservationSource,
+} from "../types/reservation";
 
 const COLLECTION_NAME = "reservations";
 const reservationsCollection = collection(db, COLLECTION_NAME);
+const backendBaseUrl =
+  import.meta.env.VITE_BACKEND_URL?.replace(/\/$/, "") ||
+  "http://localhost:3001";
 
 const DAY_IN_MILLISECONDS = 86_400_000;
 
@@ -31,6 +44,7 @@ export const RESERVATION_TIMEOUT_MINUTES = 10;
 
 const RESERVATION_TIMEOUT_MILLISECONDS =
   RESERVATION_TIMEOUT_MINUTES * 60 * 1000;
+const DEFAULT_RESERVATION_SOURCE: ReservationSource = "website";
 
 const normalizeDate = (date: Date) => {
   const normalizedDate = new Date(date);
@@ -129,6 +143,7 @@ export const getReservations = async (): Promise<Reservation[]> => {
       guestName: data.guestName,
       guestEmail: data.guestEmail,
       guestPhone: data.guestPhone,
+      source: (data.source as ReservationSource) ?? DEFAULT_RESERVATION_SOURCE,
 
       estimatedCheckInTime: data.estimatedCheckInTime ?? "",
       observations: data.observations ?? "",
@@ -202,47 +217,31 @@ export const checkAvailability = async ({
     throw new Error("La cantidad de huéspedes debe ser válida.");
   }
 
-  await expireReservations();
-
-  const reservations = await getReservations();
-
-  const now = Date.now();
-
-  const activeReservations = reservations.filter((reservation) => {
-    if (
-      reservation.status === "cancelled" ||
-      reservation.status === "expired" ||
-      reservation.status === "checked-out"
-    ) {
-      return false;
-    }
-
-    if (
-      reservation.status === "pending" &&
-      reservation.expiresAt.getTime() <= now
-    ) {
-      return false;
-    }
-
-    return true;
+  const response = await fetch(`${backendBaseUrl}/availability`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      checkIn: normalizeDate(checkIn).toISOString(),
+      checkOut: normalizeDate(checkOut).toISOString(),
+    }),
   });
+
+  const payload = (await response.json().catch(() => null)) as
+    | { message?: string; occupiedByApartment?: Record<string, number> }
+    | null;
+
+  if (!response.ok) {
+    throw new Error(payload?.message ?? "No pudimos consultar la disponibilidad.");
+  }
+
+  const occupiedByApartment = payload?.occupiedByApartment ?? {};
 
   return apartments.filter((apartment) => {
     if (apartment.capacity < guests) {
       return false;
     }
 
-    const occupiedUnits = activeReservations.filter((reservation) => {
-      return (
-        reservation.apartmentId === apartment.id &&
-        rangesOverlap(
-          checkIn,
-          checkOut,
-          reservation.checkIn,
-          reservation.checkOut,
-        )
-      );
-    }).length;
+    const occupiedUnits = occupiedByApartment[apartment.id] ?? 0;
 
     return occupiedUnits < apartment.totalUnits;
   });
@@ -252,6 +251,16 @@ export const createReservation = async (
   reservation: CreateReservationInput,
 ) => {
   validateReservationDates(reservation.checkIn, reservation.checkOut);
+  const vacationPeriods = await getVacationPeriods();
+  const vacationConflict = getVacationConflict(
+    reservation.checkIn,
+    reservation.checkOut,
+    vacationPeriods,
+  );
+
+  if (vacationConflict) {
+    throw new Error(getVacationBlockMessage(vacationConflict));
+  }
 
   if (!Number.isInteger(reservation.guests) || reservation.guests < 1) {
     throw new Error("La cantidad de huéspedes debe ser válida.");
@@ -309,6 +318,7 @@ export const createReservation = async (
     guestName: reservation.guestName.trim(),
     guestEmail: reservation.guestEmail.trim().toLowerCase(),
     guestPhone: reservation.guestPhone.trim(),
+    source: reservation.source ?? DEFAULT_RESERVATION_SOURCE,
 
     estimatedCheckInTime: reservation.estimatedCheckInTime.trim(),
     observations: reservation.observations.trim(),
@@ -341,38 +351,126 @@ export const createReservation = async (
   };
 };
 
-export const confirmReservation = async (reservationId: string) => {
-  const reservationReference = doc(db, COLLECTION_NAME, reservationId);
-  const reservationSnapshot = await getDoc(reservationReference);
+export const createAdminReservation = async (
+  reservation: CreateAdminReservationInput,
+) => {
+  validateReservationDates(reservation.checkIn, reservation.checkOut);
+  const vacationPeriods = await getVacationPeriods();
+  const vacationConflict = getVacationConflict(
+    reservation.checkIn,
+    reservation.checkOut,
+    vacationPeriods,
+  );
 
-  if (!reservationSnapshot.exists()) {
-    throw new Error("La reserva no existe.");
+  if (vacationConflict) {
+    throw new Error(getVacationBlockMessage(vacationConflict));
   }
 
-  const data = reservationSnapshot.data();
-  const status = data.status as Reservation["status"];
-  const expiresAt = optionalTimestampToDate(data.expiresAt);
-
-  if (status !== "pending") {
-    throw new Error("Sólo se pueden confirmar reservas pendientes.");
+  if (!Number.isInteger(reservation.guests) || reservation.guests < 1) {
+    throw new Error("La cantidad de huéspedes debe ser válida.");
   }
 
-  if (expiresAt && expiresAt.getTime() <= Date.now()) {
-    await updateDoc(reservationReference, {
-      status: "expired",
-      updatedAt: serverTimestamp(),
-    });
+  if (reservation.observations.length > 300) {
+    throw new Error("Las observaciones no pueden superar los 300 caracteres.");
+  }
 
+  const apartment = apartments.find(
+    (item) => item.id === reservation.apartmentId,
+  );
+
+  if (!apartment) {
+    throw new Error("La habitación seleccionada no existe.");
+  }
+
+  if (reservation.guests > apartment.capacity) {
     throw new Error(
-      "El plazo de pago venció. Usá la opción “Confirmar igualmente” para revisar y recuperar esta reserva.",
+      `Esta habitación admite hasta ${apartment.capacity} ${
+        apartment.capacity === 1 ? "huésped" : "huéspedes"
+      }.`,
     );
   }
 
-  await updateDoc(reservationReference, {
+  const availableApartments = await checkAvailability({
+    checkIn: reservation.checkIn,
+    checkOut: reservation.checkOut,
+    guests: reservation.guests,
+  });
+
+  const isStillAvailable = availableApartments.some(
+    (item) => item.id === reservation.apartmentId,
+  );
+
+  if (!isStillAvailable) {
+    throw new Error(
+      "La habitación no está disponible para las fechas seleccionadas.",
+    );
+  }
+
+  const nights = calculateNights(reservation.checkIn, reservation.checkOut);
+  const totalPrice = nights * apartment.pricePerNight;
+  const reservationCode = generateReservationCode();
+  const now = new Date();
+
+  const documentReference = await addDoc(reservationsCollection, {
+    apartmentId: apartment.id,
+    apartmentName: apartment.name,
+
+    guestName: reservation.guestName.trim(),
+    guestEmail: reservation.guestEmail.trim().toLowerCase(),
+    guestPhone: reservation.guestPhone.trim(),
+    source: reservation.source,
+
+    estimatedCheckInTime: reservation.estimatedCheckInTime.trim(),
+    observations: reservation.observations.trim(),
+
+    guests: reservation.guests,
+
+    checkIn: Timestamp.fromDate(normalizeDate(reservation.checkIn)),
+    checkOut: Timestamp.fromDate(normalizeDate(reservation.checkOut)),
+
+    nights,
+    pricePerNight: apartment.pricePerNight,
+    totalPrice,
+
     status: "confirmed",
+    reservationCode,
+
+    expiresAt: Timestamp.fromDate(now),
     confirmedAt: serverTimestamp(),
+
+    createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  return {
+    id: documentReference.id,
+    reservationCode,
+    nights,
+    totalPrice,
+  };
+};
+
+export const confirmReservation = async (reservationId: string) => {
+  const response = await fetch(
+    `${backendBaseUrl}/send-payment-email/${reservationId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  const payload = (await response.json().catch(() => null)) as
+    | { message?: string; success?: boolean }
+    | null;
+
+  if (!response.ok || !payload?.success) {
+    throw new Error(
+      payload?.message ??
+        "No pudimos confirmar la reserva ni enviar el correo.",
+    );
+  }
 };
 
 /**
