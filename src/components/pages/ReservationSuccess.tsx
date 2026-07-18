@@ -11,7 +11,6 @@ import {
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 import Navbar from "../layouts/Navbar";
-import { expireReservations } from "../../services/reservationService";
 
 type ReservationSuccessLocationState = {
   reservationCode?: string;
@@ -61,7 +60,6 @@ const ReservationSuccess = () => {
 
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
-  const [expirationProcessed, setExpirationProcessed] = useState(false);
 
   const reservationId = searchParams.get("id");
 
@@ -153,19 +151,6 @@ const ReservationSuccess = () => {
       window.clearInterval(intervalId);
     };
   }, [expirationDate, isExpired]);
-
-  useEffect(() => {
-    if (!isExpired || expirationProcessed) {
-      return;
-    }
-
-    setExpirationProcessed(true);
-
-    expireReservations().catch((error) => {
-      console.error("No se pudo actualizar la reserva expirada:", error);
-      setExpirationProcessed(false);
-    });
-  }, [expirationProcessed, isExpired]);
 
   return (
     <div className="min-h-[100svh] overflow-x-hidden bg-[#f7f5f2]">

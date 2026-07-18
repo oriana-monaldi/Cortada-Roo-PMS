@@ -168,6 +168,7 @@ const Reservations = () => {
         reservation.guestEmail.toLowerCase().includes(normalizedSearch) ||
         reservation.guestPhone.toLowerCase().includes(normalizedSearch) ||
         reservation.apartmentName.toLowerCase().includes(normalizedSearch) ||
+        reservation.reservationCode.toLowerCase().includes(normalizedSearch) ||
         reservation.id.toLowerCase().includes(normalizedSearch);
 
       return matchesStatus && matchesSearch;
@@ -340,7 +341,7 @@ const Reservations = () => {
                         </span>
                       </div>
                       <p className="mt-2 text-xs text-neutral-400">
-                        Código: {reservation.id}
+                        Código: {reservation.reservationCode ?? reservation.id}
                       </p>
 
                       {expirationText && (
@@ -367,7 +368,7 @@ const Reservations = () => {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-4 border-y border-neutral-100 py-5 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="mt-5 grid grid-cols-1 gap-4 border-y border-neutral-100 py-4 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="flex gap-3">
                       <BedDouble
                         size={18}
@@ -441,162 +442,167 @@ const Reservations = () => {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-3 text-sm text-neutral-600 sm:grid-cols-2">
-                    <a
-                      href={`mailto:${reservation.guestEmail}`}
-                      className="flex items-center gap-2 transition hover:text-neutral-950"
-                    >
-                      <Mail
-                        size={16}
-                        strokeWidth={1.7}
-                        className="text-[#9b6f45]"
-                      />
-                      {reservation.guestEmail}
-                    </a>
-                    <a
-                      href={`tel:${reservation.guestPhone}`}
-                      className="flex items-center gap-2 transition hover:text-neutral-950"
-                    >
-                      <Phone
-                        size={16}
-                        strokeWidth={1.7}
-                        className="text-[#9b6f45]"
-                      />
-                      {reservation.guestPhone}
-                    </a>
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    {reservation.status === "pending" && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() =>
-                            void updateReservationStatus(reservation.id, () =>
-                              confirmReservation(reservation.id),
-                            )
-                          }
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Check size={16} strokeWidth={2} />
-                          Confirmar pago
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() =>
-                            void updateReservationStatus(reservation.id, () =>
-                              cancelReservation(reservation.id),
-                            )
-                          }
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <X size={16} strokeWidth={2} />
-                          Cancelar
-                        </button>
-                      </>
-                    )}
-
-                    {reservation.status === "confirmed" && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() =>
-                            void updateReservationStatus(reservation.id, () =>
-                              checkInReservation(reservation.id),
-                            )
-                          }
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <LogIn size={16} strokeWidth={2} />
-                          Hacer check-in
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() =>
-                            void updateReservationStatus(reservation.id, () =>
-                              cancelReservation(reservation.id),
-                            )
-                          }
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <XCircle size={16} strokeWidth={1.8} />
-                          Cancelar reserva
-                        </button>
-                      </>
-                    )}
-
-                    {reservation.status === "expired" && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() =>
-                            void updateReservationStatus(reservation.id, () =>
-                              recoverExpiredReservation(reservation.id),
-                            )
-                          }
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Check size={16} strokeWidth={2} />
-                          Confirmar igualmente
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={isUpdating}
-                          onClick={() =>
-                            void updateReservationStatus(reservation.id, () =>
-                              cancelReservation(reservation.id),
-                            )
-                          }
-                          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <X size={16} strokeWidth={2} />
-                          Cancelar
-                        </button>
-                      </>
-                    )}
-
-                    {reservation.status === "checked-in" && (
-                      <button
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() =>
-                          void updateReservationStatus(reservation.id, () =>
-                            checkOutReservation(reservation.id),
-                          )
-                        }
-                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-4 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex min-w-0 flex-col gap-3 text-sm text-neutral-600 sm:flex-row sm:flex-wrap sm:items-center">
+                      <a
+                        href={`mailto:${reservation.guestEmail}`}
+                        className="flex min-w-0 items-center gap-2 transition hover:text-neutral-950"
                       >
-                        <LogOut size={16} strokeWidth={2} />
-                        Hacer check-out
-                      </button>
-                    )}
+                        <Mail
+                          size={16}
+                          strokeWidth={1.7}
+                          className="shrink-0 text-[#9b6f45]"
+                        />
+                        <span className="truncate">
+                          {reservation.guestEmail}
+                        </span>
+                      </a>
 
-                    {reservation.status === "checked-out" && (
-                      <span className="inline-flex h-10 items-center gap-2 rounded-xl bg-neutral-100 px-4 text-xs font-semibold text-neutral-600">
-                        <CheckCircle2 size={16} strokeWidth={1.8} />
-                        Estadía finalizada
-                      </span>
-                    )}
+                      <a
+                        href={`tel:${reservation.guestPhone}`}
+                        className="flex items-center gap-2 transition hover:text-neutral-950"
+                      >
+                        <Phone
+                          size={16}
+                          strokeWidth={1.7}
+                          className="shrink-0 text-[#9b6f45]"
+                        />
+                        {reservation.guestPhone}
+                      </a>
+                    </div>
 
-                    {reservation.status === "cancelled" && (
-                      <span className="inline-flex h-10 items-center gap-2 rounded-xl bg-red-50 px-4 text-xs font-semibold text-red-700">
-                        <XCircle size={16} strokeWidth={1.8} />
-                        Reserva cancelada
-                      </span>
-                    )}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+                      {reservation.status === "pending" && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() =>
+                              void updateReservationStatus(reservation.id, () =>
+                                confirmReservation(reservation.id),
+                              )
+                            }
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Check size={16} strokeWidth={2} />
+                            Confirmar pago
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() =>
+                              void updateReservationStatus(reservation.id, () =>
+                                cancelReservation(reservation.id),
+                              )
+                            }
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <X size={16} strokeWidth={2} />
+                            Cancelar
+                          </button>
+                        </>
+                      )}
 
-                    {isUpdating && (
-                      <span className="inline-flex h-10 items-center gap-2 px-2 text-xs font-medium text-neutral-500">
-                        <RefreshCw size={15} className="animate-spin" />
-                        Actualizando...
-                      </span>
-                    )}
+                      {reservation.status === "confirmed" && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() =>
+                              void updateReservationStatus(reservation.id, () =>
+                                checkInReservation(reservation.id),
+                              )
+                            }
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-blue-600 px-4 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <LogIn size={16} strokeWidth={2} />
+                            Hacer check-in
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() =>
+                              void updateReservationStatus(reservation.id, () =>
+                                cancelReservation(reservation.id),
+                              )
+                            }
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <XCircle size={16} strokeWidth={1.8} />
+                            Cancelar reserva
+                          </button>
+                        </>
+                      )}
+
+                      {reservation.status === "expired" && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() =>
+                              void updateReservationStatus(reservation.id, () =>
+                                recoverExpiredReservation(reservation.id),
+                              )
+                            }
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-emerald-600 px-4 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <Check size={16} strokeWidth={2} />
+                            Confirmar igualmente
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() =>
+                              void updateReservationStatus(reservation.id, () =>
+                                cancelReservation(reservation.id),
+                              )
+                            }
+                            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto border border-red-200 bg-red-50 px-4 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <X size={16} strokeWidth={2} />
+                            Cancelar
+                          </button>
+                        </>
+                      )}
+
+                      {reservation.status === "checked-in" && (
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() =>
+                            void updateReservationStatus(reservation.id, () =>
+                              checkOutReservation(reservation.id),
+                            )
+                          }
+                          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-neutral-950 px-4 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <LogOut size={16} strokeWidth={2} />
+                          Hacer check-out
+                        </button>
+                      )}
+
+                      {reservation.status === "checked-out" && (
+                        <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-neutral-100 px-4 text-xs font-semibold text-neutral-600">
+                          <CheckCircle2 size={16} strokeWidth={1.8} />
+                          Estadía finalizada
+                        </span>
+                      )}
+
+                      {reservation.status === "cancelled" && (
+                        <span className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl sm:w-auto bg-red-50 px-4 text-xs font-semibold text-red-700">
+                          <XCircle size={16} strokeWidth={1.8} />
+                          Reserva cancelada
+                        </span>
+                      )}
+
+                      {isUpdating && (
+                        <span className="inline-flex h-10 items-center gap-2 px-2 text-xs font-medium text-neutral-500">
+                          <RefreshCw size={15} className="animate-spin" />
+                          Actualizando...
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </article>

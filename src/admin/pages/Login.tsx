@@ -1,25 +1,24 @@
-import { Lock, LogIn, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, LogIn, Mail } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
+import backgroundImage from "../../assets/img1.jpeg";
 
 const Login = () => {
   const { user, login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  if (user) {
-    return <Navigate to="/admin" replace />;
-  }
+  if (user) return <Navigate to="/admin" replace />;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     setLoading(true);
     setError("");
 
@@ -33,8 +32,18 @@ const Login = () => {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f5f2] px-4">
-      <section className="w-full max-w-md rounded-3xl border border-neutral-200 bg-white p-8 shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
+    <main
+      className="relative flex min-h-screen items-center justify-center overflow-hidden px-4"
+      style={{
+        backgroundImage: `url(${backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+
+      <section className="relative z-10 w-full max-w-md rounded-3xl border border-white/20 bg-white/90 p-8 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-md">
         <div className="text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#a57b52]">
             Cortada Roo
@@ -44,7 +53,7 @@ const Login = () => {
             Panel administrador
           </h1>
 
-          <p className="mt-3 text-sm leading-6 text-neutral-500">
+          <p className="mt-3 text-sm leading-6 text-neutral-600">
             Ingresá con tu cuenta para administrar reservas.
           </p>
         </div>
@@ -60,13 +69,12 @@ const Login = () => {
                 size={18}
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400"
               />
-
               <input
                 type="email"
                 required
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className="h-12 w-full rounded-xl border border-neutral-200 pl-11 pr-4 text-sm outline-none transition focus:border-[#a57b52]"
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 w-full rounded-xl border border-neutral-200 bg-white/90 pl-11 pr-4 text-sm outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#a57b52]/20"
                 placeholder="admin@cortadaroo.com"
               />
             </div>
@@ -84,38 +92,39 @@ const Login = () => {
               />
 
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="h-12 w-full rounded-xl border border-neutral-200 pl-11 pr-4 text-sm outline-none transition focus:border-[#a57b52]"
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 w-full rounded-xl border border-neutral-200 bg-white/90 pl-11 pr-12 text-sm outline-none transition focus:border-[#a57b52] focus:ring-2 focus:ring-[#a57b52]/20"
                 placeholder="••••••••"
               />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 transition hover:text-[#9b6f45]"
+                aria-label={
+                  showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
           </div>
 
           {error && (
-            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
           <button
+            type="submit"
             disabled={loading}
-            className="
-              flex h-12 w-full items-center justify-center gap-2
-              rounded-xl bg-[#9b6f45]
-              text-sm font-semibold text-white
-              transition
-
-              hover:bg-[#855d3c]
-
-              disabled:cursor-not-allowed
-              disabled:opacity-60
-            "
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#9b6f45] text-sm font-semibold text-white transition-all duration-200 hover:bg-[#855d3c] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
           >
             <LogIn size={18} />
-
             {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
