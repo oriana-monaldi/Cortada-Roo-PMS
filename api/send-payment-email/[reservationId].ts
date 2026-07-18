@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 const ADMIN_EMAIL = "complejolopezsantafe@gmail.com";
 
-const getDb = () => {
+const getFirebaseApp = () => {
   if (!getApps().length) {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
       (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64
@@ -23,8 +23,10 @@ const getDb = () => {
     initializeApp({credential: cert(JSON.parse(serviceAccountJson))});
   }
 
-  return getFirestore();
+  return getApps()[0];
 };
+
+const getDb = () => getFirestore(getFirebaseApp());
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")
@@ -42,7 +44,9 @@ const verifyAdmin = async (authorization: string | null) => {
     return false;
   }
 
-  const token = await getAuth().verifyIdToken(authorization.slice(7));
+  const token = await getAuth(getFirebaseApp()).verifyIdToken(
+    authorization.slice(7),
+  );
   return token.email === ADMIN_EMAIL;
 };
 
