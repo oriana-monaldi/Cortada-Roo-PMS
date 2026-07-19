@@ -140,7 +140,6 @@ const getReservationEnd = (reservation: Reservation) =>
   reservation.checkOut ?? reservation.to ?? null;
 
 const isActiveReservation = (reservation: Reservation) =>
-  reservation.status === "pending" ||
   reservation.status === "confirmed" ||
   reservation.status === "checked-in";
 
